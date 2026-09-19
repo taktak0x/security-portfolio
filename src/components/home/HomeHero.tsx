@@ -8,7 +8,7 @@ export default function HomeHero({ studies }: { studies: Study[] }) {
 		>
 			<div className="lg:col-span-7">
 				<p className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-primary">
-					Security case studies
+					SECURITY / WRITEUPS
 				</p>
 				<h1
 					id="portfolio-title"
@@ -24,7 +24,7 @@ export default function HomeHero({ studies }: { studies: Study[] }) {
 						href="/case-studies/"
 						className="inline-flex items-center rounded-md border border-primary bg-primary px-4 py-2 font-bold text-primary-foreground no-underline hover:brightness-110 focus-visible:brightness-110"
 					>
-						Browse case studies
+						Explore my work
 					</a>
 				</div>
 			</div>
@@ -37,7 +37,7 @@ export default function HomeHero({ studies }: { studies: Study[] }) {
 						id="recent-work-title"
 						className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground"
 					>
-						Recent work
+						RECENT WRITEUPS
 					</h2>
 					<ul className="mt-2 divide-y divide-input">
 						{studies.map((study) => (
@@ -58,7 +58,7 @@ export default function HomeHero({ studies }: { studies: Study[] }) {
 						href="/case-studies/"
 						className="mt-2 inline-block py-1 font-mono text-xs text-muted-foreground no-underline hover:text-primary"
 					>
-						All case studies
+						View all writeups
 					</a>
 				</div>
 			</aside>
