@@ -43,8 +43,19 @@ jobs:
       - name: Check accessibility
         run: pnpm run check:a11y
 
+      - name: Set up Brave
+        run: |
+          curl -fsSLo /tmp/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+          sudo install -D -o root -g root -m 0644 /tmp/brave-browser-archive-keyring.gpg /etc/apt/keyrings/brave-browser-archive-keyring.gpg
+          echo 'deb [signed-by=/etc/apt/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main' | sudo tee /etc/apt/sources.list.d/brave-browser-release.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y brave-browser
+          test -x /usr/bin/brave-browser
+
       - name: Check browser interactions
         run: pnpm run check:interactions
+        env:
+          BRAVE_BIN: /usr/bin/brave-browser
 
       - name: Check performance budgets
         run: pnpm run check:lighthouse
