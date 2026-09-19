@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import type { Counts, Kind, SortKey, Study } from "./types";
+import type { Kind, SortKey, Study } from "./types";
 import { KINDS, SORT_KEYS } from "./types";
 
 const PAGE_SIZE = 12;
@@ -9,7 +9,13 @@ const PAGE_SIZE = 12;
 const label = (kind: Kind) =>
 	kind === "dfir"
 		? "DFIR / Sherlock"
+		: kind === "soc"
+			? "SOC / Sherlock"
 		: `${kind[0].toUpperCase()}${kind.slice(1)} machine`;
+
+const EXPLORER_KINDS: Kind[] = KINDS.includes("soc")
+	? KINDS
+	: [...KINDS, "soc"];
 
 const collator = new Intl.Collator(undefined, { sensitivity: "base" });
 
@@ -67,7 +73,7 @@ const DEFAULT_STATE: ExplorerState = {
 function readUrl(): ExplorerState {
 	const params = new URLSearchParams(window.location.search);
 	const kindParam = params.get("kind") ?? params.get("focus");
-	const active: Kind = KINDS.includes(kindParam as Kind)
+	const active: Kind = EXPLORER_KINDS.includes(kindParam as Kind)
 		? (kindParam as Kind)
 		: "all";
 	const sortParam = params.get("sort");
@@ -102,12 +108,13 @@ export default function Explorer({ studies }: { studies: Study[] }) {
 	const gridRef = React.useRef<HTMLDivElement>(null);
 	const loadMoreRef = React.useRef<HTMLButtonElement>(null);
 
-	const counts = React.useMemo<Counts>(() => {
-		const next: Counts = {
+	const counts = React.useMemo<Record<Kind, number>>(() => {
+		const next: Record<Kind, number> = {
 			all: studies.length,
 			linux: 0,
 			windows: 0,
 			dfir: 0,
+			soc: 0,
 		};
 		for (const study of studies) next[study.category] += 1;
 		return next;
@@ -138,7 +145,8 @@ export default function Explorer({ studies }: { studies: Study[] }) {
 			ordered.filter(
 				(study) =>
 					(state.active === "all" || study.category === state.active) &&
-					study.search.includes(query),
+					(!query ||
+						query.split(" ").every((term) => study.search.includes(term))),
 			),
 		[ordered, state.active, query],
 	);
@@ -244,7 +252,7 @@ export default function Explorer({ studies }: { studies: Study[] }) {
 				aria-label="Filter case studies"
 			>
 				<ul className="flex flex-wrap gap-1.5 p-0">
-					{KINDS.map((kind) => (
+					{EXPLORER_KINDS.map((kind) => (
 						<li key={kind}>
 							<button
 								type="button"
@@ -286,7 +294,7 @@ export default function Explorer({ studies }: { studies: Study[] }) {
 						className="explorer-card relative grid gap-1 border-b border-[var(--portfolio-line)] py-4 md:grid-cols-[10rem_1fr] md:gap-x-6"
 						hidden={!visible.has(study.id)}
 					>
-						<span className="font-mono text-xs uppercase tracking-wide text-primary md:pt-1">
+						<span className="font-mono text-xs font-medium uppercase tracking-wide text-primary md:pt-1">
 							{study.label}
 						</span>
 						<div className="min-w-0">
@@ -298,7 +306,7 @@ export default function Explorer({ studies }: { studies: Study[] }) {
 									{study.title}
 								</a>
 							</h3>
-							<p className="mt-1 text-pretty text-sm text-muted-foreground">
+							<p className="mt-1 max-w-[72ch] text-pretty text-sm text-muted-foreground">
 								{study.description}
 							</p>
 							<div

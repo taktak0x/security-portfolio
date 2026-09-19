@@ -26,7 +26,7 @@ export default defineConfig({
 					"sha256-OT6rncc3q/HAZxFhU8Z7usSuSFUYlKM4kgPHZV03rBg=",
 					"sha256-Zq2C3D7tul51zk4otXeF3betszC3IgHnvOlehVJyxOE=",
 					// Legacy homepage-explorer forwarder (index.astro).
-					"sha256-LsBn86Ew7qAP7RTUSO6RteaVmb2xdknEl8jHcf7BE+M=",
+					"sha256-i2hw14cM0hF+uWtbt0I/lSFAp9pYOmzhpC+PR05L82o=",
 				],
 			},
 			styleDirective: {

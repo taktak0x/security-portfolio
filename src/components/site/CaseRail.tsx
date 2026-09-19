@@ -145,7 +145,7 @@ export function CaseRail({ categoryHref, categoryLabel, headings }: Props) {
 			</a>
 			{sections.length > 0 && (
 				<div className="border-t border-border pt-4">
-					<h2 className="m-0 mb-2 font-mono text-[0.68rem] font-bold tracking-[0.08em] text-muted-foreground uppercase">
+					<h2 className="m-0 mb-2 font-mono text-[0.68rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
 						Contents
 					</h2>
 					<ul className="m-0 flex list-none flex-col gap-1.5 p-0 text-[0.82rem]">

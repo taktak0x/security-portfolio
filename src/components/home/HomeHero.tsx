@@ -3,12 +3,12 @@ import type { Study } from "./types";
 export default function HomeHero({ studies }: { studies: Study[] }) {
 	return (
 		<section
-			className="grid grid-cols-1 gap-8 py-16 lg:grid-cols-12 lg:gap-6 lg:py-24"
+			className="grid grid-cols-1 gap-8 py-10 lg:grid-cols-12 lg:gap-6 lg:py-24"
 			aria-labelledby="portfolio-title"
 		>
 			<div className="lg:col-span-7">
-				<p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-primary">
-					Security case studies
+				<p className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-primary">
+					SECURITY / WRITEUPS
 				</p>
 				<h1
 					id="portfolio-title"
@@ -16,7 +16,7 @@ export default function HomeHero({ studies }: { studies: Study[] }) {
 				>
 					TakTak
 				</h1>
-				<p className="mt-5 max-w-[68ch] text-pretty text-lg text-muted-foreground">
+				<p className="mt-5 max-w-[68ch] text-pretty text-base text-muted-foreground">
 					I focus on cybersecurity, with an emphasis on Active Directory, penetration testing, and incident investigation. I'm currently expanding my skills in SOC operations, DFIR, and detection engineering. I learn them through hands-on labs, HTB content, and practical security projects.
 				</p>
 				<div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
@@ -24,7 +24,7 @@ export default function HomeHero({ studies }: { studies: Study[] }) {
 						href="/case-studies/"
 						className="inline-flex items-center rounded-md border border-primary bg-primary px-4 py-2 font-bold text-primary-foreground no-underline hover:brightness-110 focus-visible:brightness-110"
 					>
-						Browse case studies
+						Explore my work
 					</a>
 				</div>
 			</div>
@@ -35,9 +35,9 @@ export default function HomeHero({ studies }: { studies: Study[] }) {
 				<div className="border-t border-input pt-5">
 					<h2
 						id="recent-work-title"
-						className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground"
+						className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground"
 					>
-						Recent work
+						RECENT WRITEUPS
 					</h2>
 					<ul className="mt-2 divide-y divide-input">
 						{studies.map((study) => (
@@ -58,7 +58,7 @@ export default function HomeHero({ studies }: { studies: Study[] }) {
 						href="/case-studies/"
 						className="mt-2 inline-block py-1 font-mono text-xs text-muted-foreground no-underline hover:text-primary"
 					>
-						All case studies
+						View all writeups
 					</a>
 				</div>
 			</aside>

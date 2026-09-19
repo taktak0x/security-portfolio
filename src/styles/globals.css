@@ -83,7 +83,9 @@
 	font-weight: 600;
 	line-height: var(--lh-tight);
 	text-wrap: balance;
-	scroll-margin-top: calc(var(--portfolio-header-h, 5.5rem) + 1rem);
+}
+.portfolio-prose :where(h2, h3)[id] {
+	scroll-margin-top: calc(var(--portfolio-header-h, 5.5rem) + 1.25rem);
 }
 .portfolio-prose h1 { font-size: var(--step-4); letter-spacing: -0.03em; margin: 0 0 1.5rem; }
 .portfolio-prose h2 {
@@ -141,10 +143,17 @@
 	padding: 0.6rem 0;
 	border-bottom: 1px solid var(--portfolio-line);
 }
-.portfolio-index a { font-weight: 500; }
+.portfolio-index a {
+	font-weight: 500;
+	text-decoration-color: transparent;
+	text-decoration-thickness: 0.08em;
+}
+.portfolio-index a:hover,
+.portfolio-index a:focus-visible { text-decoration-color: currentColor; }
 .portfolio-index__description {
 	display: block;
 	margin-top: 0.2rem;
+	max-width: 72ch;
 	color: var(--portfolio-muted);
 	font-size: var(--step--1);
 }
@@ -189,8 +198,12 @@ main[data-page='credential'] .portfolio-prose > h1 {
 	padding-bottom: 0.75rem;
 	border-bottom: 1px solid var(--portfolio-line);
 }
+main[data-page='credential'] .portfolio-prose {
+	--portfolio-copy: 73ch;
+}
 main[data-page='credential'] .credential-certificate {
 	margin-top: 2rem;
+	max-width: none;
 }
 
 .portfolio-prose blockquote {
@@ -269,12 +282,10 @@ main[data-page='credential'] .credential-certificate {
 	main[data-page='method'] .portfolio-route {
 		grid-template-columns: minmax(0, 1fr) min(17rem, 272px);
 	}
-	/* Credential records carry no code or tables, so the article track is capped
-	   at the readable prose measure (`--portfolio-copy`) and the certificate
-	   inherits it, keeping the contents rail adjacent instead of leaving an
-	   empty column beside the ~68ch prose. */
+	/* Credential canvas stays broad enough for its certificate; narrative prose
+	   remains capped independently by the credential-scoped copy measure. */
 	main[data-page='credential'] .portfolio-route {
-		grid-template-columns: minmax(0, var(--portfolio-copy)) min(17rem, 272px);
+		grid-template-columns: minmax(0, 48rem) min(17rem, 272px);
 		justify-content: center;
 	}
 	/* The archive keeps the explorer at a readable width, centred. */
@@ -285,8 +296,38 @@ main[data-page='credential'] .credential-certificate {
 	/* Collection indexes and profiles are single-column editorial pages. */
 	main[data-page='collection-index'] .portfolio-route,
 	main[data-page='profiles'] .portfolio-route {
-		grid-template-columns: minmax(0, 56rem);
+		grid-template-columns: minmax(0, 60rem);
 		justify-content: center;
+	}
+}
+
+@media (max-width: 720px) {
+	main[data-page='case'] .portfolio-prose {
+		line-height: 1.62;
+	}
+	main[data-page='case'] .portfolio-prose h2 {
+		font-size: clamp(1.55rem, 5vw, 1.8rem);
+		margin-top: 2.25rem;
+		margin-bottom: 0.8rem;
+	}
+	main[data-page='case'] .portfolio-prose h3 {
+		font-size: 1.15rem;
+		margin-top: 1.5rem;
+		margin-bottom: 0.6rem;
+	}
+	main[data-page='case'] .portfolio-prose pre {
+		scrollbar-width: thin;
+		scrollbar-color: var(--portfolio-muted) var(--portfolio-surface-raised);
+	}
+	main[data-page='case'] .portfolio-prose pre::-webkit-scrollbar {
+		height: 6px;
+	}
+	main[data-page='case'] .portfolio-prose pre::-webkit-scrollbar-track {
+		background: var(--portfolio-surface-raised);
+	}
+	main[data-page='case'] .portfolio-prose pre::-webkit-scrollbar-thumb {
+		background: var(--portfolio-muted);
+		border-radius: var(--portfolio-radius-sm);
 	}
 }
 

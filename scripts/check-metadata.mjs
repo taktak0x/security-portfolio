@@ -31,15 +31,30 @@ function attr(tag, name) {
 	return match[2] ?? match[3] ?? match[4];
 }
 
-/**
- * A dist-relative path is a case-study leaf page (not an index/library page).
- * Astro emits every page as a directory with an index.html, so leaf vs index
- * is decided by the source shape: case studies live under dist/case-studies/,
- * with the one library index at dist/case-studies/index.html.
- */
-function isCaseStudyPage(rel) {
-	const normalized = rel.split('\\').join('/');
-	return normalized.startsWith('dist/case-studies/') && normalized !== 'dist/case-studies/index.html';
+/** Classify rendered page markers used by Astro page archetypes. */
+function pageKind(html) {
+	const marker = html.match(/<(?:main|article)\b[^>]*\bdata-page\s*=\s*["']([^"']+)["']/i)?.[1];
+	if (marker === 'case') return 'case';
+	if (marker === 'collection-index') return 'collection-index';
+	return 'other';
+}
+
+/** Infer required page markers from generated route shape and metadata. */
+function expectedPageKind(rel, html) {
+	const path = rel.split('\\').join('/');
+	if (
+		/^dist\/(?:case-studies\/htb\/(?:machines\/(?:linux|windows)|sherlocks\/(?:dfir|soc))|prolabs)\/index\.html$/i.test(path)
+	) {
+		return 'collection-index';
+	}
+	if (
+		/^dist\/case-studies\/htb\/(?:machines\/(?:linux|windows)|sherlocks\/(?:dfir|soc))\/[^/]+\/index\.html$/i.test(path) ||
+		/<meta\b[^>]*property\s*=\s*["']og:type["'][^>]*content\s*=\s*["']article["']/i.test(html) ||
+		/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>[\s\S]*?"@type"\s*:\s*"Article"/i.test(html)
+	) {
+		return 'case';
+	}
+	return undefined;
 }
 
 /** Resolve a URL pathname to a generated file under dist/, if any. */
@@ -71,6 +86,8 @@ for (const file of htmlFiles) {
 	const html = readFileSync(file, 'utf-8');
 	const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? '';
 	const isRedirect = /<meta\b[^>]*http-equiv\s*=\s*["']?refresh/i.test(html);
+	const expectedKind = expectedPageKind(rel, html);
+	const actualKind = pageKind(html);
 
 	const titleMatches = matches(head, /<title\b[^>]*>([\s\S]*?)<\/title>/gi);
 	const linkTags = [...head.matchAll(/<link\b[^>]*>/gi)].map((m) => m[0]);
@@ -101,6 +118,10 @@ for (const file of htmlFiles) {
 			}
 		}
 		continue;
+	}
+
+	if (expectedKind && actualKind !== expectedKind) {
+		problems.push(`${rel}: expected data-page="${expectedKind}", found ${actualKind === 'other' ? 'missing or unknown marker' : `"${actualKind}"`}`);
 	}
 
 	if (titleMatches.length !== 1) {
@@ -138,7 +159,7 @@ for (const file of htmlFiles) {
 	if (!is404 && nonEmptyDescriptions.length === 1) {
 		const content = (attr(nonEmptyDescriptions[0], 'content') ?? '').trim();
 		if (!descriptionsByContent.has(content)) descriptionsByContent.set(content, []);
-		descriptionsByContent.get(content).push({ rel, caseStudy: isCaseStudyPage(rel) });
+		descriptionsByContent.get(content).push({ rel, pageKind: expectedKind ?? actualKind });
 	}
 
 	const h1s = matches(html, /<h1\b[^>]*>([\s\S]*?)<\/h1>/gi);
@@ -166,7 +187,7 @@ for (const [href, files] of canonicals) {
 for (const [content, entries] of descriptionsByContent) {
 	if (entries.length < 2) continue;
 	const files = entries.map((entry) => entry.rel);
-	const allCaseStudies = entries.every((entry) => entry.caseStudy);
+	const allCaseStudies = entries.every((entry) => entry.pageKind === 'case');
 	const detail = `duplicate <meta name="description"> across pages: "${content}" in ${files.join(', ')}`;
 	if (allCaseStudies) problems.push(`[case-study failure] ${detail}`);
 	else warnings.push(`[warning] ${detail}`);

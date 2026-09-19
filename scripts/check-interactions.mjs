@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Focused browser-interaction regression checks for the generated static site
 // in dist/. No third-party dependency: this uses Node's built-in HTTP server,
-// global fetch and global WebSocket to drive a headless Chrome/Chromium/Brave
+// global fetch and global WebSocket to drive a headless Brave
 // instance over the Chrome DevTools Protocol (CDP).
 //
 // Why a real browser: the defects under test are DOM geometry and live React
@@ -37,17 +37,46 @@ const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
 function waitForExit(child, timeout = 5000) {
 	return new Promise((done) => {
-		if (child.exitCode !== null) return done();
+		if (child.exitCode !== null) return done(true);
 		const timer = setTimeout(() => {
 			child.removeListener('exit', onExit);
-			done();
+			done(false);
 		}, timeout);
 		const onExit = () => {
 			clearTimeout(timer);
-			done();
+			done(true);
 		};
 		child.once('exit', onExit);
 	});
+}
+
+async function waitForPortClosed(port, timeout = 5000) {
+	const deadline = Date.now() + timeout;
+	while (Date.now() < deadline) {
+		const controller = new AbortController();
+		const probeTimeout = setTimeout(() => controller.abort(), Math.min(500, deadline - Date.now()));
+		try {
+			const response = await fetch(`http://127.0.0.1:${port}/json/version`, {
+				cache: 'no-store',
+				signal: controller.signal,
+			});
+			await response.body?.cancel();
+		} catch (error) {
+			if (!controller.signal.aborted && isConnectionClosedError(error)) return true;
+		} finally {
+			clearTimeout(probeTimeout);
+		}
+		await sleep(50);
+	}
+	return false;
+}
+
+function isConnectionClosedError(error) {
+	const codes = new Set();
+	for (let current = error; current; current = current.cause) {
+		if (current.code) codes.add(current.code);
+	}
+	return ['ECONNREFUSED', 'ECONNRESET', 'UND_ERR_SOCKET', 'ERR_SOCKET_CLOSED'].some((code) => codes.has(code));
 }
 
 async function removeDir(dir) {
@@ -135,14 +164,9 @@ async function startServer() {
 
 function resolveBrowser() {
 	const candidates = [
-		process.env.CHROME_BIN,
-		'google-chrome',
-		'google-chrome-stable',
-		'chromium',
-		'chromium-browser',
+		process.env.BRAVE_BIN,
 		'brave',
 		'brave-browser',
-		'chrome',
 	].filter(Boolean);
 
 	const pathDirs = (process.env.PATH ?? '').split(sep === '/' ? ':' : ';').filter(Boolean);
@@ -170,7 +194,6 @@ async function launchBrowser(browserPath, profileDir) {
 			'--no-default-browser-check',
 			'--disable-gpu',
 			'--disable-dev-shm-usage',
-			'--no-sandbox',
 			'--disable-extensions',
 			'--disable-background-networking',
 			'--window-size=1280,900',
@@ -200,7 +223,19 @@ async function launchBrowser(browserPath, profileDir) {
 		await sleep(100);
 	}
 	child.kill('SIGKILL');
+	await waitForExit(child);
 	throw new Error(`timed out waiting for DevToolsActivePort\n${stderr}`);
+}
+
+async function stopBrowser(instance, profileDir) {
+	try {
+		if (!instance?.child) return;
+		if (instance.child.exitCode === null) instance.child.kill('SIGKILL');
+		assert(await waitForExit(instance.child), 'browser process did not exit after SIGKILL');
+		assert(await waitForPortClosed(instance.port), `browser DevTools port ${instance.port} remained open`);
+	} finally {
+		await removeDir(profileDir);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -213,6 +248,10 @@ class CDPClient {
 		this.nextId = 0;
 		this.pending = new Map();
 		this.listeners = new Map();
+		this.ws.addEventListener('close', () => {
+			for (const { reject } of this.pending.values()) reject(new Error('CDP socket closed'));
+			this.pending.clear();
+		});
 	}
 
 	connect() {
@@ -386,10 +425,6 @@ const SEARCH_STATUS = `${SEARCH_DIALOG} [role="status"]`;
 const SEARCH_LIST = `${SEARCH_DIALOG} ul`;
 
 async function testSearchDialogStability() {
-	const MANY = 'e'; // matches well over the 20-result cap
-	const MANY_TOO = 'er'; // also over the cap, different result set
-	const CAP_TEXT = 'Showing the first 20';
-
 	await setViewport(1024, 700);
 	await goto('/');
 	await waitForHydration();
@@ -399,19 +434,114 @@ async function testSearchDialogStability() {
 		label: 'search dialog to open',
 	});
 
-	await setInputValue(SEARCH_INPUT, MANY);
+	const queries = await evaluate(`(async () => {
+		const response = await fetch('/search-index.json');
+		if (!response.ok) throw new Error('search index unavailable');
+		const data = await response.json();
+		const entries = Array.isArray(data) ? data : data?.entries;
+		if (!Array.isArray(entries)) throw new Error('search index has no entries');
+		const fields = (entry) => [
+			entry.title,
+			entry.description,
+			entry.objective,
+			entry.category,
+			entry.label,
+			...(entry.tags ?? []),
+			...(entry.tools ?? []),
+			entry.skill,
+			entry.outcome,
+		].filter((value) => typeof value === 'string');
+		const matches = (term) => entries
+			.filter((entry) => fields(entry).some((value) => value.toLowerCase().includes(term)))
+			.map((entry) => entry.href);
+		const candidates = new Set();
+		const pairs = new Set();
+		for (const entry of entries) {
+			const terms = new Set();
+			for (const value of fields(entry)) {
+				for (const term of value.toLowerCase().match(/[a-z0-9][a-z0-9-]*/g) ?? []) {
+					candidates.add(term);
+					if (term.length > 1) terms.add(term);
+				}
+			}
+			const entryTerms = [...terms];
+			for (let first = 0; first < entryTerms.length; first += 1) {
+				for (let second = first + 1; second < entryTerms.length; second += 1) {
+					pairs.add(entryTerms[first] + ' ' + entryTerms[second]);
+				}
+			}
+		}
+		const ranked = [...candidates].map((term) => ({
+			term,
+			hrefs: matches(term),
+		})).filter((candidate) => candidate.hrefs.length > 0)
+			.sort((a, b) => b.hrefs.length - a.hrefs.length);
+		const first = ranked[0];
+		const second = ranked.find((candidate) =>
+			candidate.term !== first?.term && candidate.hrefs.slice(0, 20).join('\\n') !== first?.hrefs.slice(0, 20).join('\\n'),
+		);
+		const and = [...pairs].map((query) => {
+			const [firstTerm, secondTerm] = query.split(' ');
+			const firstHrefs = matches(firstTerm);
+			const secondHrefs = matches(secondTerm);
+			const hrefs = entries
+				.filter((entry) => fields(entry).some((value) => value.toLowerCase().includes(firstTerm)) && fields(entry).some((value) => value.toLowerCase().includes(secondTerm)))
+				.map((entry) => entry.href);
+			return { query, hrefs, broad: Math.max(firstHrefs.length, secondHrefs.length) };
+		}).find((candidate) => candidate.hrefs.length > 0 && candidate.hrefs.length < candidate.broad);
+		return {
+			first: first ? { query: first.term, hrefs: first.hrefs } : null,
+			second: second ? { query: second.term, hrefs: second.hrefs } : null,
+			and: and ?? null,
+		};
+	})()`);
+	assert(queries.first && queries.second && queries.and, 'search index has no measurable single-term and AND query result sets');
+	const firstQuery = queries.first.query;
+	const secondQuery = queries.second.query;
+
+	await waitFor(
+		async () => (await textContent(SEARCH_STATUS)) === 'Start typing to search.',
+		{ label: 'search index to load' },
+	);
+	await setInputValue(SEARCH_INPUT, firstQuery);
 	await waitFor(
 		async () => {
 			const text = await textContent(SEARCH_STATUS);
-			return typeof text === 'string' && text.includes(CAP_TEXT);
+			return typeof text === 'string' && /^\d+ results?\b/.test(text);
 		},
-		{ label: `search status for query ${MANY}` },
+		{ label: `search status for query ${firstQuery}` },
 	);
+
+	const searchState = () =>
+		evaluate(`(() => {
+			const dialog = document.querySelector(${JSON.stringify(SEARCH_DIALOG)});
+			const list = dialog.querySelector(${JSON.stringify(SEARCH_LIST)});
+			const status = dialog.querySelector('[role="status"]')?.textContent.trim() ?? '';
+			const hrefs = Array.from(list?.querySelectorAll(':scope > li a') ?? []).map((link) => link.getAttribute('href'));
+			const total = status.match(/^(\\d+)\\s+results?\\b/)?.[1] ?? null;
+			const shown = status.match(/Showing the first (\\d+)/)?.[1] ?? total;
+			return { status, hrefs, total: total ? Number(total) : null, shown: shown ? Number(shown) : null };
+		})()`);
+
+	const firstSearch = await searchState();
+	assert(firstSearch.total !== null, `search status has no total: "${firstSearch.status}"`);
+	assert(firstSearch.shown !== null, `search status has no rendered limit: "${firstSearch.status}"`);
+	assert(firstSearch.total > 0, `search status reports no measurable results: "${firstSearch.status}"`);
+	assert(firstSearch.total >= firstSearch.shown, `search status total is below rendered limit: "${firstSearch.status}"`);
+	assert(
+		firstSearch.hrefs.length === firstSearch.shown,
+		`search status says ${firstSearch.shown} rendered results, found ${firstSearch.hrefs.length}`,
+	);
+	assert(firstSearch.total === queries.first.hrefs.length, `search total ${firstSearch.total} differs from index matches ${queries.first.hrefs.length}`);
+	assert(JSON.stringify(firstSearch.hrefs) === JSON.stringify(queries.first.hrefs.slice(0, firstSearch.shown)), 'search displayed hrefs differ from index matches or cap');
+	if (queries.first.hrefs.length > firstSearch.shown) {
+		assert(firstSearch.status.includes('Showing the first'), `search cap message missing: "${firstSearch.status}"`);
+	}
 
 	const geometry = () =>
 		evaluate(`(() => {
 			const dialog = document.querySelector(${JSON.stringify(SEARCH_DIALOG)});
-			const list = dialog.querySelector('ul');
+			const list = dialog.querySelector(${JSON.stringify(SEARCH_LIST)});
 			const heading = dialog.querySelector('h2');
 			const input = dialog.querySelector('input[type="search"]');
 			const status = dialog.querySelector('[role="status"]');
@@ -457,16 +587,29 @@ async function testSearchDialogStability() {
 	assert(!first.inputInList, 'search input is inside the result list scroll container');
 	assert(!first.statusInList, 'status region is inside the result list scroll container');
 
-	// Changing the result set while the cap is still reached must not move the
-	// dialog or its top chrome.
-	await setInputValue(SEARCH_INPUT, MANY_TOO);
+	// Changing the rendered result set must not move the dialog or its top chrome.
+	await setInputValue(SEARCH_INPUT, secondQuery);
 	await waitFor(
 		async () => {
-			const text = await textContent(SEARCH_STATUS);
-			return typeof text === 'string' && text.includes(CAP_TEXT) && !text.includes(' 82 ');
+			const next = await searchState();
+			return next.hrefs.join('\n') !== firstSearch.hrefs.join('\n') ? next : false;
 		},
-		{ label: `search status for query ${MANY_TOO}` },
+		{ label: `search status for query ${secondQuery}` },
 	);
+	const secondSearch = await searchState();
+	assert(secondSearch.total !== null, `search status has no total: "${secondSearch.status}"`);
+	assert(secondSearch.shown !== null, `search status has no rendered limit: "${secondSearch.status}"`);
+	assert(secondSearch.total > 0, `search status reports no measurable results: "${secondSearch.status}"`);
+	assert(secondSearch.total >= secondSearch.shown, `search status total is below rendered limit: "${secondSearch.status}"`);
+	assert(
+		secondSearch.hrefs.length === secondSearch.shown,
+		`search status says ${secondSearch.shown} rendered results, found ${secondSearch.hrefs.length}`,
+	);
+	assert(secondSearch.total === queries.second.hrefs.length, `search total ${secondSearch.total} differs from index matches ${queries.second.hrefs.length}`);
+	assert(JSON.stringify(secondSearch.hrefs) === JSON.stringify(queries.second.hrefs.slice(0, secondSearch.shown)), 'search displayed hrefs differ from index matches or cap');
+	if (queries.second.hrefs.length > secondSearch.shown) {
+		assert(secondSearch.status.includes('Showing the first'), `search cap message missing: "${secondSearch.status}"`);
+	}
 
 	const second = await geometry();
 	assert(
@@ -477,9 +620,26 @@ async function testSearchDialogStability() {
 		Math.abs(second.inputTop - first.inputTop) <= 1,
 		`dialog chrome moved as results changed (input top ${first.inputTop} -> ${second.inputTop})`,
 	);
+
+	await setInputValue(SEARCH_INPUT, queries.and.query);
+	await waitFor(
+		async () => {
+			const next = await searchState();
+			return next.total === queries.and.hrefs.length ? next : false;
+		},
+		{ label: `search status for multi-term query ${queries.and.query}` },
+	);
+	const andSearch = await searchState();
+	assert(andSearch.total === queries.and.hrefs.length, `AND search total ${andSearch.total} differs from index matches ${queries.and.hrefs.length}`);
+	assert(andSearch.shown !== null, `AND search status has no rendered limit: "${andSearch.status}"`);
+	assert(
+		JSON.stringify(andSearch.hrefs) === JSON.stringify(queries.and.hrefs.slice(0, andSearch.shown)),
+		'multi-term search used OR matching instead of AND matching',
+	);
 }
 
 async function testExplorerInteractivity() {
+	const REACTION_TIMEOUT = 2000;
 	await setViewport(1280, 900);
 	await goto('/case-studies/');
 	await waitForHydration();
@@ -487,24 +647,42 @@ async function testExplorerInteractivity() {
 	const inputExists = await evaluate(`!!document.querySelector('#explorer-search')`);
 	assert(inputExists, 'explorer search input #explorer-search is missing');
 
-	const set = await setInputValue('#explorer-search', 'docker');
-	assert(set, 'could not set the explorer search input');
-
+	const initial = await evaluate(`(() => ({
+		status: document.querySelector('.explorer-result-js')?.textContent ?? '',
+		visibleHrefs: Array.from(document.querySelectorAll('#explorer-grid .explorer-card:not([hidden]) a'))
+			.map((link) => link.getAttribute('href')),
+		query: document.querySelector('#explorer-grid .explorer-card:not([hidden]) h3')?.textContent.trim() ?? '',
+	}))()`);
 	const started = Date.now();
+	assert(initial.query, 'explorer has no rendered card title to use as a search query');
+	const set = await setInputValue('#explorer-search', initial.query);
+	assert(set, 'could not set the explorer search input');
 	const status = await waitFor(
 		async () => {
 			const text = await textContent('.explorer-result-js');
-			return typeof text === 'string' && /\b3 results?\b/.test(text) ? text : false;
+			const visibleHrefs = await evaluate(
+				`Array.from(document.querySelectorAll('#explorer-grid .explorer-card:not([hidden]) a')).map((link) => link.getAttribute('href'))`,
+			);
+			return typeof text === 'string' && text !== initial.status && visibleHrefs.join('\n') !== initial.visibleHrefs.join('\n')
+				? { text, visibleHrefs }
+				: false;
 		},
-		{ timeout: 6000, label: 'explorer results to react to typing' },
+		{ timeout: REACTION_TIMEOUT, label: 'explorer results to react to typing' },
 	);
 	const elapsed = Date.now() - started;
-
-	const visibleCards = await evaluate(
-		`document.querySelectorAll('#explorer-grid .explorer-card:not([hidden])').length`,
+	assert(elapsed <= REACTION_TIMEOUT, `explorer response exceeded ${REACTION_TIMEOUT}ms (${elapsed}ms)`);
+	const count = status.text.match(/^(?:Showing (\d+) of \d+|(\d+) results?)/);
+	assert(count, `explorer result state is not truthful: "${status.text}"`);
+	const renderedCount = Number(count[1] ?? count[2]);
+	assert(
+		renderedCount === status.visibleHrefs.length,
+		`explorer result state says ${renderedCount} rendered results, found ${status.visibleHrefs.length}`,
 	);
-	assert(visibleCards === 3, `expected 3 visible cards for "docker", found ${visibleCards}`);
-	console.log(`       (explorer reacted in ~${elapsed}ms, status: "${status}")`);
+	assert(
+		JSON.stringify(status.visibleHrefs) !== JSON.stringify(initial.visibleHrefs),
+		'explorer typing did not change the rendered result set',
+	);
+	console.log(`       (explorer reacted in ~${elapsed}ms, status: "${status.text}")`);
 }
 
 async function testNarrowViewportOverflow() {
@@ -514,8 +692,12 @@ async function testNarrowViewportOverflow() {
 	const metrics = await evaluate(`(() => {
 		const doc = document.documentElement;
 		const header = document.querySelector('.portfolio-header');
+		const hasHeader = !!header;
 		const headerInner = header ? header.firstElementChild : null;
+		const hasHeaderInner = !!headerInner;
 		return {
+			hasHeader,
+			hasHeaderInner,
 			innerWidth: window.innerWidth,
 			clientWidth: doc.clientWidth,
 			scrollWidth: doc.scrollWidth,
@@ -525,6 +707,8 @@ async function testNarrowViewportOverflow() {
 			headerInnerRight: headerInner ? headerInner.getBoundingClientRect().right : null,
 		};
 	})()`);
+	assert(metrics.hasHeader, 'header .portfolio-header is missing at 320px');
+	assert(metrics.hasHeaderInner, 'mobile header inner container is missing at 320px');
 
 	assert(
 		metrics.scrollWidth <= metrics.clientWidth + 1,
@@ -534,12 +718,10 @@ async function testNarrowViewportOverflow() {
 		metrics.bodyScrollWidth <= metrics.clientWidth + 1,
 		`body overflows at 320px (body scrollWidth ${metrics.bodyScrollWidth} > clientWidth ${metrics.clientWidth})`,
 	);
-	if (metrics.headerScrollWidth !== null) {
-		assert(
-			metrics.headerScrollWidth <= metrics.headerClientWidth + 1,
-			`header overflows at 320px (scrollWidth ${metrics.headerScrollWidth} > clientWidth ${metrics.headerClientWidth})`,
-		);
-	}
+	assert(
+		metrics.headerScrollWidth <= metrics.headerClientWidth + 1,
+		`header overflows at 320px (scrollWidth ${metrics.headerScrollWidth} > clientWidth ${metrics.headerClientWidth})`,
+	);
 }
 
 async function testMobileCaseOrder() {
@@ -549,23 +731,40 @@ async function testMobileCaseOrder() {
 	const order = await evaluate(`(() => {
 		const prefix = (a, b) =>
 			!!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+		const mobileDisclosures = Array.from(document.querySelectorAll('main[data-page="case"] div'))
+			.filter((container) => container.classList.contains('xl:hidden'))
+			.flatMap((container) => Array.from(container.querySelectorAll('details')));
+		const disclosure = (label) =>
+			mobileDisclosures.find((details) =>
+				(details.querySelector('summary.portfolio-disclosure')?.textContent ?? '')
+					.toLowerCase()
+					.includes(label),
+			);
 		const article = document.querySelector('article[data-page="case"]');
 		const h1 = document.querySelector('#_top');
-		const facts = document.querySelector('aside[aria-label="Case facts"]');
-		const contents = document.querySelector('nav[aria-label="Case contents"]');
-		const related = document.querySelector('nav[aria-label="Related cases"]');
-		const provenance = document.querySelector('nav[aria-label="Provenance"]');
+		const articleContent = article
+			? Array.from(article.children).find(
+					(child) => child.classList.contains('portfolio-prose') && !child.querySelector('h1'),
+				)
+			: null;
+		const facts = disclosure('case facts')?.querySelector('aside[aria-label="Case facts"]');
+		const contents = disclosure('contents')?.querySelector('nav[aria-label="Case contents"]');
+		const relatedDisclosure = disclosure('related cases and provenance');
+		const related = relatedDisclosure?.querySelector('nav[aria-label="Related cases"]');
+		const provenance = relatedDisclosure?.querySelector('nav[aria-label="Provenance"]');
 		return {
-			hasArticle: !!article,
+			hasArticle: !!articleContent,
 			hasH1: !!h1,
 			hasFacts: !!facts,
 			hasContents: !!contents,
 			hasRelated: !!related,
 			hasProvenance: !!provenance,
 			h1BeforeFacts: !!(h1 && facts) && prefix(h1, facts),
-			h1BeforeContents: !!(h1 && contents) && prefix(h1, contents),
-			articleBeforeRelated: !!(article && related) && prefix(article, related),
-			articleBeforeProvenance: !!(article && provenance) && prefix(article, provenance),
+			factsBeforeContents: !!(facts && contents) && prefix(facts, contents),
+			contentsBeforeArticle: !!(contents && articleContent) && prefix(contents, articleContent),
+			articleBeforeRelated: !!(articleContent && related) && prefix(articleContent, related),
+			articleBeforeProvenance: !!(articleContent && provenance) && prefix(articleContent, provenance),
+			relatedBeforeProvenance: !!(related && provenance) && prefix(related, provenance),
 		};
 	})()`);
 
@@ -573,58 +772,36 @@ async function testMobileCaseOrder() {
 		assert(order[key], `mobile case page is missing an expected element: ${key}`);
 	}
 	assert(order.h1BeforeFacts, 'H1 does not precede the Case facts disclosure in document order');
-	assert(order.h1BeforeContents, 'H1 does not precede the Contents disclosure in document order');
+	assert(order.factsBeforeContents, 'Case facts does not precede Contents in document order');
+	assert(order.contentsBeforeArticle, 'Contents does not precede article in document order');
 	assert(order.articleBeforeRelated, 'Related cases appears before the end of the article in document order');
 	assert(order.articleBeforeProvenance, 'Provenance appears before the end of the article in document order');
+	if (order.hasRelated && order.hasProvenance) {
+		assert(order.relatedBeforeProvenance, 'Related cases does not precede Provenance in document order');
+	}
 }
 
-async function testMobileTocsIfPresent() {
-	// Method and Pro Lab pages currently render their TOC only in the desktop
-	// right rail; there is no mobile disclosure in dist. Coverage is recorded as
-	// a skip so it activates once the UI exists, rather than requiring behaviour
-	// that has not been implemented.
+async function testMobileTocs() {
 	const pages = ['/method/', '/prolabs/dante/'];
-	const present = [];
 	for (const path of pages) {
-		await setViewport(390, 844);
-		await goto(path);
-		const hasMobileToc = await evaluate(`(() => {
-			const disclosures = Array.from(document.querySelectorAll('details.portfolio-disclosure'));
-			return disclosures.some((d) => {
-				const summary = d.querySelector('summary');
-				const label = summary ? summary.textContent.toLowerCase() : '';
-				return label.includes('contents') || label.includes('on this page');
-			});
-		})()`);
-		if (hasMobileToc) present.push(path);
-	}
-
-	if (present.length === 0) {
-		skip(
-			'mobile TOC for Method and Pro Lab pages',
-			'not implemented in the current build (no mobile Contents/on-this-page disclosure); TODO add assertions when it lands',
-		);
-		return;
-	}
-
-	await check('mobile TOC on Method and Pro Lab pages', async () => {
-		for (const path of present) {
+		await check(`mobile TOC on ${path}`, async () => {
+			const response = await fetch(`${origin}${path}`);
+			assert(
+				response.ok && response.headers.get('content-type')?.includes('text/html'),
+				`required mobile TOC fixture unavailable: ${path}`,
+			);
 			await setViewport(390, 844);
 			await goto(path);
 			const ok = await evaluate(`(() => {
-				const disclosures = Array.from(document.querySelectorAll('details.portfolio-disclosure'));
-				const toc = disclosures.find((d) => {
-					const label = (d.querySelector('summary')?.textContent ?? '').toLowerCase();
-					return label.includes('contents') || label.includes('on this page');
-				});
-				if (!toc) return false;
-				const summary = toc.querySelector('summary');
-				const list = toc.querySelector('ul');
-				return !!summary && !!list && toc.open === false;
+				const toc = Array.from(document.querySelectorAll('main .' + CSS.escape('xl:hidden') + ' details'))
+					.find((details) => details.querySelector('summary.portfolio-disclosure')?.textContent.trim() === 'Contents');
+				const summary = toc?.querySelector('summary.portfolio-disclosure');
+				const links = toc?.querySelectorAll('nav[aria-label="Page contents"] a[href^="#"]');
+				return !!toc && !!summary && !!links?.length && toc.open === false;
 			})()`);
-			assert(ok, `mobile TOC on ${path} is not a closed <details> with a summary and list`);
-		}
-	});
+			assert(ok, `mobile TOC on ${path} is missing Contents disclosure or links`);
+		});
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -639,7 +816,7 @@ try {
 	const browserPath = resolveBrowser();
 	if (!browserPath) {
 		console.error(
-			'check-interactions: no Chrome/Chromium/Brave executable found. Set CHROME_BIN or install one.',
+			'check-interactions: no Brave executable found. Set BRAVE_BIN or install Brave.',
 		);
 		process.exit(1);
 	}
@@ -669,15 +846,20 @@ try {
 		await check('explorer controls respond to typing promptly', testExplorerInteractivity);
 		await check('320px homepage/header has no horizontal overflow', testNarrowViewportOverflow);
 		await check('mobile case document order', testMobileCaseOrder);
-		await testMobileTocsIfPresent();
+		await testMobileTocs();
 	} finally {
-		cdp?.close();
-		if (browser?.child && browser.child.exitCode === null) {
-			browser.child.kill('SIGKILL');
-			await waitForExit(browser.child);
+		try {
+			if (cdp) {
+				await Promise.race([
+					cdp.send('Browser.close'),
+					sleep(2000).then(() => { throw new Error('Browser.close timed out'); }),
+				]);
+			}
+		} catch {
+			// Browser may close the CDP socket before replying.
 		}
-		// Clean up only the isolated profile this script created.
-		await removeDir(profileDir);
+		cdp?.close();
+		await stopBrowser(browser, profileDir);
 	}
 } catch (error) {
 	console.error(`check-interactions: fatal error: ${error.message}`);

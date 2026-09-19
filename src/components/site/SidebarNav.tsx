@@ -60,7 +60,7 @@ export function SidebarNav({ currentPath }: { currentPath: string }) {
 			<LinkList links={PRIMARY_LINKS} current={current} />
 			{GROUPS.map((group) => (
 				<div key={group.label} className="border-t border-border pt-4">
-					<h2 className="m-0 mb-2 font-mono text-[0.68rem] font-bold tracking-[0.08em] text-muted-foreground uppercase">
+					<h2 className="m-0 mb-2 font-mono text-[0.68rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
 						{group.label}
 					</h2>
 					<LinkList links={group.links} current={current} />
