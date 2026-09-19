@@ -8,8 +8,10 @@ import { Pagination } from '../components/site/Pagination.tsx';
 import { DocsMeta } from '../components/site/DocsMeta.tsx';
 import { CaseRail } from '../components/site/CaseRail.tsx';
 import { CaseInfoPanel } from '../components/site/CaseInfoPanel.tsx';
+import { MobileContents } from '../components/site/MobileContents.tsx';
 import Explorer from '../components/home/Explorer.tsx';
 import type { Study } from '../components/home/types';
+import { resolveCategory } from '../lib/category.ts';
 import { PERSON, PERSON_ID } from '../lib/schema.ts';
 
 export async function getStaticPaths() {
@@ -18,12 +20,15 @@ export async function getStaticPaths() {
 		const route = entry.id.endsWith('/index')
 			? entry.id.slice(0, -'/index'.length)
 			: entry.id;
-		return { params: { slug: route }, props: { entry } };
+		return { params: { slug: route }, props: { entry, entries } };
 	});
 }
 
-type Props = { entry: CollectionEntry<'docs'> };
-const { entry } = Astro.props;
+type Props = {
+	entry: CollectionEntry<'docs'>;
+	entries: CollectionEntry<'docs'>[];
+};
+const { entry, entries } = Astro.props;
 
 const { Content, headings } = await render(entry);
 
@@ -34,38 +39,14 @@ const description = entry.data.description;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
 const currentPath = Astro.url.pathname;
 
-let lastUpdated: string | undefined;
-try {
-	const commitDate = execFileSync(
-		'git',
-		['log', '-1', '--format=%cs', '--', entry.filePath],
-		{ cwd: process.cwd() },
-	)
-		.toString()
-		.trim();
-	lastUpdated = commitDate || undefined;
-} catch {
-	lastUpdated = undefined;
-}
-
 const categoryKey = entry.id.split('/').slice(0, -1).join('/');
-
-// Known portfolio categories, keyed by the case's parent directory.
-const CATEGORY_LABELS: [string, string][] = [
-	['machines/windows', 'Windows'],
-	['machines/linux', 'Linux'],
-	['sherlocks/dfir', 'DFIR'],
-];
-const knownCategory = CATEGORY_LABELS.find(([suffix]) => categoryKey.endsWith(suffix));
-const titleCase = (value: string) =>
-	value.replace(/(^|[- ])\w/g, (char) => char.toUpperCase());
-const categoryName =
-	knownCategory?.[1] ?? titleCase(categoryKey.split('/').at(-1) ?? 'Case');
+const category = isCase ? resolveCategory(entry.id) : null;
+const categoryName = category?.label ?? '';
 const railLabel = `${categoryName} cases`;
-const categoryHref = '/' + categoryKey + '/';
+const categoryHref = category ? `/case-studies/htb/${category.key}/` : '';
 
 // Same-category cases, newest first, id as tiebreak, current page excluded.
-const related = (await getCollection('docs'))
+const related = entries
 	.filter(
 		(item) =>
 			item.data.type === 'case-study' &&
@@ -109,7 +90,7 @@ const isCredential = entry.id.startsWith('prolabs/') && !isIndexEntry(entry);
 let prev: { href: string; title: string } | undefined;
 let next: { href: string; title: string } | undefined;
 if (!isCase && !isIndexEntry(entry) && !isCredential) {
-	const siblings = (await getCollection('docs'))
+	const siblings = entries
 		.filter(
 			(item) =>
 				item.id.split('/').slice(0, -1).join('/') === categoryKey &&
@@ -135,6 +116,7 @@ const SEGMENT_LABELS: Record<string, string> = {
 	htb: 'Hack The Box',
 	sherlocks: 'Sherlocks',
 	dfir: 'DFIR',
+	soc: 'SOC',
 	machines: 'Machines',
 	windows: 'Windows',
 	linux: 'Linux',
@@ -157,7 +139,7 @@ const descendantGroups: {
 }[] = [];
 if (isIndex) {
 	const prefix = entry.id + '/';
-	const descendants = (await getCollection('docs'))
+	const descendants = entries
 		.filter(
 			(item) =>
 				item.data.type === 'case-study' && item.id.startsWith(prefix),
@@ -194,7 +176,7 @@ if (isIndex) {
 const isCaseStudiesIndex = entry.id === 'case-studies';
 let archiveStudies: Study[] = [];
 if (isCaseStudiesIndex) {
-	const raw = (await getCollection('docs'))
+	const raw = entries
 		.filter(
 			({ id, data }) =>
 				id.startsWith('case-studies/') &&
@@ -203,13 +185,15 @@ if (isCaseStudiesIndex) {
 		)
 		.sort((a, b) => a.data.title.localeCompare(b.data.title));
 	const categoryOf = (study: CollectionEntry<'docs'>): Study['category'] => {
-		if (study.id.includes('/sherlocks/')) return 'dfir';
-		if (study.id.includes('/windows/')) return 'windows';
-		return 'linux';
+		const resolved = resolveCategory(study.id);
+		if (!resolved) throw new Error(`Unknown case-study path: ${study.id}`);
+		return resolved.key.split('/').at(-1) as Study['category'];
 	};
 	const labelOf = (kind: string) =>
 		kind === 'dfir'
 			? 'DFIR / Sherlock'
+			: kind === 'soc'
+				? 'SOC / Sherlock'
 			: `${kind[0].toUpperCase()}${kind.slice(1)} machine`;
 	const cleanDescription = (value: string) =>
 		value
@@ -290,6 +274,22 @@ const showRightRail =
 const showDocsMeta =
 	pageKind === 'method' || pageKind === 'credential' || pageKind === 'page';
 
+let lastUpdated: string | undefined;
+if (showDocsMeta) {
+	try {
+		const commitDate = execFileSync(
+			'git',
+			['log', '-1', '--format=%cs', '--', entry.filePath],
+			{ cwd: process.cwd() },
+		)
+			.toString()
+			.trim();
+		lastUpdated = commitDate || undefined;
+	} catch {
+		lastUpdated = undefined;
+	}
+}
+
 // JSON-LD is emitted only on case pages: an Article node plus a BreadcrumbList
 // built from the canonical pathname. Non-case pages get none.
 let jsonLd: Record<string, unknown> | undefined;
@@ -354,7 +354,7 @@ const panelProps = {
 			pageKind === 'page' && (
 				<div class="mx-auto w-full max-w-[var(--portfolio-max-width)] px-4 pb-6 xl:hidden">
 					<details class="rounded-[var(--portfolio-radius)] border border-border bg-card">
-						<summary class="cursor-pointer list-none px-4 py-3 font-mono text-sm font-bold text-foreground portfolio-disclosure">
+						<summary class="cursor-pointer list-none px-4 py-3 font-mono text-sm font-medium text-foreground portfolio-disclosure">
 							Sections
 						</summary>
 						<div class="px-4 pb-4">
@@ -383,7 +383,7 @@ const panelProps = {
 		>
 			{
 				showLeftRail && (
-					<div class="hidden xl:block" data-reveal>
+					<div class="hidden xl:block">
 						<div class="sticky top-[calc(var(--portfolio-header-h,5.5rem)+1rem)]">
 							{isCase ? (
 								<CaseRail
@@ -403,13 +403,13 @@ const panelProps = {
 			<div class="min-w-0">
 				<article data-page={pageKind}>
 					<div class="portfolio-prose">
-						<h1 id="_top" data-reveal>{entry.data.title}</h1>
+						<h1 id="_top">{entry.data.title}</h1>
 					</div>
 					{
 						isCase && (
 							<div class="pb-6 xl:hidden">
 								<details class="rounded-[var(--portfolio-radius)] border border-border bg-card">
-									<summary class="cursor-pointer list-none px-4 py-3 font-mono text-sm font-bold text-foreground portfolio-disclosure">
+									<summary class="cursor-pointer list-none px-4 py-3 font-mono text-sm font-medium text-foreground portfolio-disclosure">
 										Case facts
 									</summary>
 									<div class="px-4 pb-4">
@@ -419,33 +419,13 @@ const panelProps = {
 							</div>
 						)
 					}
-					{
-						isCase &&
-							headings.some((heading) => heading.depth === 2 && heading.slug) && (
-								<div class="pb-6 xl:hidden">
-									<details class="rounded-[var(--portfolio-radius)] border border-border bg-card">
-										<summary class="cursor-pointer list-none px-4 py-3 font-mono text-sm font-bold text-foreground portfolio-disclosure">
-											Contents
-										</summary>
-										<div class="px-4 pb-4">
-											<nav aria-label="Case contents">
-												<ul>
-													{headings
-														.filter(
-															(heading) => heading.depth === 2 && heading.slug,
-														)
-														.map((heading) => (
-															<li>
-																<a href={'#' + heading.slug}>{heading.text}</a>
-															</li>
-														))}
-												</ul>
-											</nav>
-										</div>
-									</details>
-								</div>
-							)
-					}
+					{(isCase || isMethod || isCredential || pageKind === 'page') && (
+						<MobileContents
+							headings={headings}
+							depths={isCase ? [2] : [2, 3]}
+							ariaLabel={isCase ? 'Case contents' : 'Page contents'}
+						/>
+					)}
 					<div class="portfolio-prose">
 						<Content />
 						{
@@ -457,9 +437,9 @@ const panelProps = {
 									{descendantGroups.map((group) => (
 										<>
 											{descendantGroups.length > 1 && <h2>{group.label}</h2>}
-											<ul data-reveal-group>
+											<ul>
 												{group.items.map((item) => (
-													<li data-reveal>
+													<li>
 														<a href={item.href}>{item.title}</a>
 														{item.description && (
 															<span class="portfolio-index__description">
@@ -478,7 +458,7 @@ const panelProps = {
 				</article>
 				{
 					isCaseStudiesIndex && (
-						<div data-reveal>
+						<div>
 							<Explorer
 								studies={archiveStudies}
 								client:load
@@ -498,7 +478,7 @@ const panelProps = {
 
 			{
 				showRightRail && (
-					<div class="hidden xl:block" data-reveal>
+					<div class="hidden xl:block">
 						<div class="sticky top-[calc(var(--portfolio-header-h,5.5rem)+1rem)]">
 							{isCase ? <CaseInfoPanel {...panelProps} /> : <Toc headings={headings} />}
 						</div>
@@ -511,7 +491,7 @@ const panelProps = {
 			isCase && (
 				<div class="mx-auto w-full max-w-[var(--portfolio-max-width)] px-4 pb-10 xl:hidden">
 					<details class="rounded-[var(--portfolio-radius)] border border-border bg-card">
-						<summary class="cursor-pointer list-none px-4 py-3 font-mono text-sm font-bold text-foreground portfolio-disclosure">
+						<summary class="cursor-pointer list-none px-4 py-3 font-mono text-sm font-medium text-foreground portfolio-disclosure">
 							Related cases and provenance
 						</summary>
 						<div class="px-4 pb-4">

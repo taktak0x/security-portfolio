@@ -1,14 +1,9 @@
 const LINKS = [
-	{ href: "/", label: "Home" },
 	{ href: "/case-studies/", label: "Case Studies" },
 	{ href: "/prolabs/", label: "Pro Labs" },
 	{ href: "/profiles/", label: "Profiles" },
 	{ href: "/method/", label: "Method" },
-	{ href: "https://github.com/taktak0x/security-portfolio", label: "Source" },
-	{
-		href: "https://github.com/taktak0x/security-portfolio/issues/new",
-		label: "Report site issue",
-	},
+	{ href: "https://github.com/taktak0x/security-portfolio", label: "GitHub" },
 ];
 
 export default function SiteFooter() {

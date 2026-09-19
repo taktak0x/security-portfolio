@@ -9,7 +9,7 @@ export function Toc({ headings }: { headings: Heading[] }) {
 	if (items.length === 0) return null
 	return (
 		<nav aria-label="On this page" className="flex flex-col gap-3">
-			<h2 className="m-0 font-mono text-[0.68rem] font-bold tracking-[0.08em] text-muted-foreground uppercase">
+			<h2 className="m-0 font-mono text-[0.68rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
 				On this page
 			</h2>
 			<ol className="m-0 flex list-none flex-col gap-1.5 p-0 text-sm">

@@ -32,7 +32,7 @@ const CARDS: Card[] = [
 export default function FocusCards() {
 	return (
 		<section className="pt-16 pb-4" aria-labelledby="focus-title">
-			<div className="max-w-[68ch]" data-reveal>
+			<div className="max-w-[68ch]">
 				<h2
 					id="focus-title"
 					className="text-3xl tracking-[-0.04em] sm:text-4xl"
@@ -45,13 +45,11 @@ export default function FocusCards() {
 			</div>
 			<ul
 				className="mt-6 list-none border-t border-[var(--portfolio-line)] pl-0"
-				data-reveal-group
 			>
 				{CARDS.map((card) => (
 					<li
 						key={card.kind}
 						className="border-b border-[var(--portfolio-line)]"
-						data-reveal
 					>
 						<a
 							href={card.href}

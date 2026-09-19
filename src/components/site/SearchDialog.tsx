@@ -7,8 +7,11 @@ type Entry = {
 	href: string;
 	title?: string;
 	description?: string;
+	objective?: string;
 	tags?: string[];
 	tools?: string[];
+	skill?: string;
+	outcome?: string;
 	category?: string;
 	kind?: string;
 	label?: string;
@@ -23,10 +26,13 @@ function fieldValues(entry: Entry): string[] {
 	return [
 		entry.title,
 		entry.description,
+		entry.objective,
 		entry.category,
 		entry.label,
 		...(entry.tags ?? []),
 		...(entry.tools ?? []),
+		entry.skill,
+		entry.outcome,
 	].filter((value): value is string => typeof value === "string");
 }
 
@@ -91,9 +97,10 @@ export default function SearchDialog({
 	const trimmed = query.trim().toLowerCase();
 	const matches = React.useMemo(() => {
 		if (!trimmed) return [];
+		const terms = trimmed.split(/\s+/);
 		return entries.filter((entry) =>
-			fieldValues(entry).some((value) =>
-				value.toLowerCase().includes(trimmed),
+			terms.every((term) =>
+				fieldValues(entry).some((value) => value.toLowerCase().includes(term)),
 			),
 		);
 	}, [entries, trimmed]);

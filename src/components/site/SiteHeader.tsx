@@ -60,7 +60,7 @@ export default function SiteHeader({ currentPath }: { currentPath: string }) {
 						variant="outline"
 						size="sm"
 						aria-label="Search"
-						className="shadow-none"
+						className="h-8 w-8 px-0 shadow-none sm:w-auto sm:px-3 sm:has-[>svg]:px-2.5"
 						onClick={() => setSearchOpen(true)}>
 						<Search aria-hidden="true" />
 						<span className="sr-only sm:not-sr-only">Search</span>
@@ -71,7 +71,7 @@ export default function SiteHeader({ currentPath }: { currentPath: string }) {
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						className="shadow-none md:hidden"
+						className="rounded-md border border-input shadow-none md:hidden"
 						aria-expanded={menuOpen}
 						aria-controls="site-nav"
 						aria-label={menuOpen ? "Close menu" : "Open menu"}

@@ -4,6 +4,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import HomeHero from "../components/home/HomeHero.tsx";
 import FocusCards from "../components/home/FocusCards.tsx";
 import type { Study } from "../components/home/types";
+import { resolveCategory } from "../lib/category.ts";
 import { PERSON, PERSON_ID } from "../lib/schema.ts";
 
 const title = "TakTak — Security Portfolio";
@@ -22,13 +23,15 @@ const studiesRaw = allDocs
 
 // Category derived from collection path so cards show factual, path-based labels.
 const category = (study: (typeof studiesRaw)[number]): Study["category"] => {
-	if (study.id.includes("/sherlocks/")) return "dfir";
-	if (study.id.includes("/windows/")) return "windows";
-	return "linux";
+	const resolved = resolveCategory(study.id);
+	if (!resolved) throw new Error(`Unknown case-study path: ${study.id}`);
+	return resolved.key.split("/").at(-1) as Study["category"];
 };
 const label = (kind: string) =>
 	kind === "dfir"
 		? "DFIR / Sherlock"
+		: kind === "soc"
+			? "SOC / Sherlock"
 		: `${kind[0].toUpperCase()}${kind.slice(1)} machine`;
 // Overview rail: the newest three case studies. Explicit immutable `addedAt`
 // (portfolio-addition date) descending, then stable id ascending. Entries
@@ -104,12 +107,13 @@ const jsonLd = {
 	<script is:inline>
 		(() => {
 			const params = new URLSearchParams(window.location.search);
+			const validKinds = ["all", "linux", "windows", "dfir", "soc"];
+			const hasValidKind = ["kind", "focus"].some((name) =>
+				validKinds.includes(params.get(name) ?? ""),
+			);
 			if (
 				window.location.hash === "#explorer" ||
-				params.has("kind") ||
-				params.has("focus") ||
-				params.has("q") ||
-				params.has("sort")
+				hasValidKind
 			) {
 				window.location.replace(
 					"/case-studies/" + window.location.search + window.location.hash,

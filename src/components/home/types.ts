@@ -1,4 +1,4 @@
-export type Category = "linux" | "windows" | "dfir";
+export type Category = "linux" | "windows" | "dfir" | "soc";
 export type Kind = "all" | Category;
 export type SortKey = "newest" | "az" | "category";
 
