@@ -1,0 +1,39 @@
+name: Publisher PR review
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+permissions:
+  contents: read
+  metadata: read
+
+jobs:
+  review:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.repo.full_name == github.repository &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.user.login == 'taktak-portfolio-publisher[bot]' &&
+      github.event.pull_request.user.type == 'Bot' &&
+      startsWith(github.event.pull_request.head.ref, 'publish-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: publisher-pr-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout trusted base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Run deterministic review
+        env:
+          PORTFOLIO_BOT_APP_ID: ${{ secrets.PORTFOLIO_BOT_APP_ID }}
+          PORTFOLIO_BOT_INSTALLATION_ID: ${{ secrets.PORTFOLIO_BOT_INSTALLATION_ID }}
+          PORTFOLIO_BOT_APP_PRIVATE_KEY: ${{ secrets.PORTFOLIO_BOT_APP_PRIVATE_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 .github/scripts/pr-review.py --pr-number "$PR_NUMBER"
