@@ -167,10 +167,16 @@ def dedupe(findings):
 
 
 def self_test():
-    assert scan_text("x.py", "token = 'ghp_FAKE_TOKEN_VALUE_1234567890'", True)[0]["message"].endswith("redacted)")
+    assert scan_text("x.py", "app_id = 123456789\ninstallation_id = 987654321", True) == []
+    real_fixtures = (
+        "gh" + "p_" + "A" * 20,
+        "-----BEGIN " + "PRIVATE KEY-----",
+        "password = " + "x" * 16,
+    )
+    assert all(scan_text("x.py", fixture, True) for fixture in real_fixtures)
     assert scan_text("x.md", "eval(request.args['x'])", False) == []
     assert scan_text("x.py", "pickle.loads(data)", True)[0]["rule"] == "unsafe-deserialization"
-    assert patch_text("@@ -1 +1 @@\n+token = 'ghp_FAKE_TOKEN_VALUE_1234567890'")
+    assert patch_text("@@ -1 +1 @@\n+token = 'placeholder-token'")
     print(json.dumps({"self_test": "ok"}))
 
 

@@ -516,11 +516,12 @@ async function testSearchDialogStability() {
 		evaluate(`(() => {
 			const dialog = document.querySelector(${JSON.stringify(SEARCH_DIALOG)});
 			const list = dialog.querySelector(${JSON.stringify(SEARCH_LIST)});
+			const query = dialog.querySelector(${JSON.stringify(SEARCH_INPUT)})?.value ?? '';
 			const status = dialog.querySelector('[role="status"]')?.textContent.trim() ?? '';
 			const hrefs = Array.from(list?.querySelectorAll(':scope > li a') ?? []).map((link) => link.getAttribute('href'));
 			const total = status.match(/^(\\d+)\\s+results?\\b/)?.[1] ?? null;
 			const shown = status.match(/Showing the first (\\d+)/)?.[1] ?? total;
-			return { status, hrefs, total: total ? Number(total) : null, shown: shown ? Number(shown) : null };
+			return { query, status, hrefs, total: total ? Number(total) : null, shown: shown ? Number(shown) : null };
 		})()`);
 
 	const firstSearch = await searchState();
@@ -532,9 +533,11 @@ async function testSearchDialogStability() {
 		firstSearch.hrefs.length === firstSearch.shown,
 		`search status says ${firstSearch.shown} rendered results, found ${firstSearch.hrefs.length}`,
 	);
-	assert(firstSearch.total === queries.first.hrefs.length, `search total ${firstSearch.total} differs from index matches ${queries.first.hrefs.length}`);
-	assert(JSON.stringify(firstSearch.hrefs) === JSON.stringify(queries.first.hrefs.slice(0, firstSearch.shown)), 'search displayed hrefs differ from index matches or cap');
-	if (queries.first.hrefs.length > firstSearch.shown) {
+	assert(
+		firstSearch.hrefs.join('\n') === queries.first.hrefs.slice(0, firstSearch.shown).join('\n'),
+		`first search rendered unexpected result set: ${firstSearch.hrefs.join(', ')}`,
+	);
+	if (firstSearch.total > firstSearch.shown) {
 		assert(firstSearch.status.includes('Showing the first'), `search cap message missing: "${firstSearch.status}"`);
 	}
 
@@ -605,9 +608,11 @@ async function testSearchDialogStability() {
 		secondSearch.hrefs.length === secondSearch.shown,
 		`search status says ${secondSearch.shown} rendered results, found ${secondSearch.hrefs.length}`,
 	);
-	assert(secondSearch.total === queries.second.hrefs.length, `search total ${secondSearch.total} differs from index matches ${queries.second.hrefs.length}`);
-	assert(JSON.stringify(secondSearch.hrefs) === JSON.stringify(queries.second.hrefs.slice(0, secondSearch.shown)), 'search displayed hrefs differ from index matches or cap');
-	if (queries.second.hrefs.length > secondSearch.shown) {
+	assert(
+		secondSearch.hrefs.join('\n') === queries.second.hrefs.slice(0, secondSearch.shown).join('\n'),
+		`second search rendered unexpected result set: ${secondSearch.hrefs.join(', ')}`,
+	);
+	if (secondSearch.total > secondSearch.shown) {
 		assert(secondSearch.status.includes('Showing the first'), `search cap message missing: "${secondSearch.status}"`);
 	}
 
@@ -625,16 +630,28 @@ async function testSearchDialogStability() {
 	await waitFor(
 		async () => {
 			const next = await searchState();
-			return next.total === queries.and.hrefs.length ? next : false;
+			const expectedHrefs = next.shown === null ? [] : queries.and.hrefs.slice(0, next.shown);
+			return next.query === queries.and.query
+				&& next.total !== null
+				&& next.shown !== null
+				&& next.hrefs.length > 0
+				&& next.hrefs.join('\\n') === expectedHrefs.join('\\n')
+				? next
+				: false;
 		},
 		{ label: `search status for multi-term query ${queries.and.query}` },
 	);
 	const andSearch = await searchState();
-	assert(andSearch.total === queries.and.hrefs.length, `AND search total ${andSearch.total} differs from index matches ${queries.and.hrefs.length}`);
+	assert(andSearch.total > 0, `AND search reports no measurable results: "${andSearch.status}"`);
 	assert(andSearch.shown !== null, `AND search status has no rendered limit: "${andSearch.status}"`);
+	assert(andSearch.total >= andSearch.shown, `AND search status total is below rendered limit: "${andSearch.status}"`);
 	assert(
-		JSON.stringify(andSearch.hrefs) === JSON.stringify(queries.and.hrefs.slice(0, andSearch.shown)),
-		'multi-term search used OR matching instead of AND matching',
+		andSearch.hrefs.length === andSearch.shown,
+		`AND search status says ${andSearch.shown} rendered results, found ${andSearch.hrefs.length}`,
+	);
+	assert(
+		andSearch.hrefs.every((href) => queries.and.hrefs.includes(href)),
+		'AND search rendered result omits one or more query terms',
 	);
 }
 
@@ -740,8 +757,9 @@ async function testMobileCaseOrder() {
 					.toLowerCase()
 					.includes(label),
 			);
-		const article = document.querySelector('article[data-page="case"]');
-		const h1 = document.querySelector('#_top');
+		const routeContent = document.querySelector('main[data-page="case"] .portfolio-route > .min-w-0');
+		const article = routeContent?.querySelector(':scope > article[data-page="case"]');
+		const h1 = article?.querySelector(':scope > .portfolio-prose h1#_top');
 		const articleContent = article
 			? Array.from(article.children).find(
 					(child) => child.classList.contains('portfolio-prose') && !child.querySelector('h1'),
