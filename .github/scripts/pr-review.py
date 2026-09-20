@@ -18,13 +18,18 @@ API_VERSION = "2022-11-28"
 REPO = "taktak0x/security-portfolio"
 BASE = "main"
 PUBLISHER = "taktak-portfolio-publisher[bot]"
-REVIEWER = "taktak-portfolio-bot[bot]"
+REVIEWER = "taktak-portfolio-manager[bot]"
 BRANCH = re.compile(r"publish-[0-9a-f]{24}\Z")
 TRUSTED_BRANCH = re.compile(r"(?:dev|publish-[0-9a-f]{24})\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 ALLOWED_FILE = re.compile(
     r"src/content/docs/case-studies(?:/[a-z0-9][a-z0-9._-]*)+\.(?:md|markdown|mdx)\Z"
 )
+DEV_FILE = re.compile(
+    r"(?:\.github/(?:workflows|scripts)/|scripts/|src/|docs/|config/)"
+    r"[A-Za-z0-9][A-Za-z0-9._/-]*\Z"
+)
+UNSAFE_FILE = re.compile(r"(?:^|/)(?:__pycache__|node_modules|dist|build|coverage)(?:/|$)|\.(?:pyc|log|sqlite3?)\Z")
 SENSITIVE_FILE = re.compile(
     r"(?i)(?:^|/)(?:\.env(?:\.[^/]*)?|\.git(?:/.*)?|"
     r"[^/]*(?:secret|credential|private[_-]?key|authorized[_-]?keys?)[^/]*)$"
@@ -155,13 +160,16 @@ def paginated(api, path, key=None):
     raise ReviewError("GitHub API pagination limit exceeded")
 
 
-def valid_files(files):
+def valid_files(files, branch=None):
     # Content validation stays separate from security scanning; Markdown prose is not code.
+    allowed = DEV_FILE if branch == "dev" else ALLOWED_FILE
     return bool(files) and all(
         isinstance(item, dict)
         and isinstance(item.get("filename"), str)
-        and ALLOWED_FILE.fullmatch(item.get("filename", ""))
+        and allowed.fullmatch(item.get("filename", ""))
+        and ".." not in item["filename"].split("/")
         and not SENSITIVE_FILE.search(item["filename"])
+        and not UNSAFE_FILE.search(item["filename"])
         for item in files
     )
 
@@ -317,7 +325,7 @@ def review_pr(api, number, write=True):
     except ReviewError as exc:
         failures.append(str(exc))
         findings = []
-    if not valid_files(files if isinstance(files, list) else []):
+    if not valid_files(files if isinstance(files, list) else [], (pr.get("head") or {}).get("ref", "")):
         failures.append("changed files outside allowlist")
     if not successful_checks(checks, head):
         failures.append("CI checks not all successful")
@@ -340,7 +348,8 @@ def submit(api, number, result, write):
         if not publisher_pr(current) or current_head != result.get("head_sha"):
             raise HeadChangedError("PR head changed before review")
         event = result["decision"]
-        body = result.get("body", APPROVE_BODY if event == "APPROVE" else CHANGES_BODY)
+        body = result.get("body", (APPROVE_BODY if event == "APPROVE" else CHANGES_BODY)
+                         + "\n\nReason: " + result.get("reason", "unspecified"))
         api.post(
             "/repos/{0}/pulls/{1}/reviews".format(REPO, number),
             {"body": body, "event": event, "commit_id": result["head_sha"]},
@@ -397,8 +406,12 @@ def self_test():
     assert not valid_files([{"filename": "src/content/docs/case-studies/../../.env"}])
     assert not valid_files([{"filename": "src/content/docs/prolabs/foo.md"}])
     assert not valid_files([{"filename": "src/content/docs/case-studies/secrets.md"}])
+    assert valid_files([{"filename": ".github/workflows/pr-review.yml"}], "dev")
+    assert valid_files([{"filename": ".github/scripts/pr-review.py"}], "dev")
+    assert not valid_files([{"filename": ".env"}], "dev")
     assert review_pr(api, 7, write=True)["written"] is True
     assert api.writes[-1][2]["event"] == "APPROVE"
+    assert "Reason: all deterministic gates passed" in api.writes[-1][2]["body"]
     assert api.writes[-1][2]["commit_id"] == head
     values[prefix + "/commits/" + head + "/check-runs?per_page=100&page=1"] = {"check_runs": []}
     timeout = CHECK_TIMEOUT_SECONDS
@@ -494,7 +507,7 @@ def main():
     try:
         result = review_with_retries(GitHub(app_token()), args.pr_number)
         print(json.dumps(result, sort_keys=True))
-        return 0
+        return 0 if result.get("decision") in ("APPROVE", "SKIP") else 1
     except (ReviewError, OSError, subprocess.SubprocessError) as exc:
         sys.stderr.write("pr-review: {0}\n".format(exc))
         return 2
