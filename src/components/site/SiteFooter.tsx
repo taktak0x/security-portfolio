@@ -1,5 +1,7 @@
 const LINKS = [
-	{ href: "/case-studies/", label: "Case Studies" },
+	{ href: "/archive/", label: "Archive" },
+	{ href: "/blog/", label: "Blog" },
+	{ href: "/lab/", label: "Lab" },
 	{ href: "/prolabs/", label: "Pro Labs" },
 	{ href: "/profiles/", label: "Profiles" },
 	{ href: "/method/", label: "Method" },

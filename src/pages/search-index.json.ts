@@ -43,6 +43,12 @@ export async function GET() {
 				kind = 'credential';
 				label = 'Credential';
 			}
+		} else if (top === 'blog' || entry.data.type === 'blog') {
+			kind = isIndex ? 'collection' : 'blog';
+			label = 'Blog';
+		} else if (top === 'lab' || entry.data.type === 'lab') {
+			kind = isIndex ? 'collection' : 'lab';
+			label = 'Lab';
 		} else if (top === 'profiles') {
 			kind = 'profile';
 			label = 'Profile';
@@ -53,7 +59,9 @@ export async function GET() {
 
 		return {
 			id: entry.id,
-			href: '/' + entry.id.replace(/\/index$/, '') + '/',
+			href: entry.id === 'case-studies'
+				? '/archive/'
+				: '/' + entry.id.replace(/\/index$/, '') + '/',
 			title: entry.data.title,
 			description: entry.data.description,
 			objective: entry.data.objective,

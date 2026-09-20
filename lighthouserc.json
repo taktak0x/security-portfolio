@@ -5,7 +5,7 @@
         "numberOfRuns": 3,
       "url": [
         "http://localhost/",
-        "http://localhost/case-studies/",
+        "http://localhost/archive/",
         "http://localhost/case-studies/htb/machines/windows/monteverde/"
       ]
     },

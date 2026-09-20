@@ -37,7 +37,7 @@ const label = (kind: string) =>
 // (portfolio-addition date) descending, then stable id ascending. Entries
 // without `addedAt` are omitted. No Git commit time or file mtime is read, and
 // `featured` is not consulted. The full searchable archive, with its own URL
-// state contract, lives at `/case-studies/`.
+// state contract, lives at `/archive/`.
 const railStudies: Study[] = studiesRaw
 	.filter((study) => study.data.addedAt)
 	.sort(
@@ -102,7 +102,7 @@ const jsonLd = {
 >
 	{/* Legacy deep links: before the redesign the explorer lived on `/` and
 	    encoded its view as `?kind/q/sort#explorer`. It now lives at
-	    `/case-studies/` with the same URL contract, so forward those old URLs
+	    `/archive/` with the same URL contract, so forward those old URLs
 	    once, verbatim, and leave an ordinary homepage visit untouched. */}
 	<script is:inline>
 		(() => {
@@ -116,7 +116,7 @@ const jsonLd = {
 				hasValidKind
 			) {
 				window.location.replace(
-					"/case-studies/" + window.location.search + window.location.hash,
+					"/archive/" + window.location.search + window.location.hash,
 				);
 			}
 		})();

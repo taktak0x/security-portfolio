@@ -17,7 +17,9 @@ import { PERSON, PERSON_ID } from '../lib/schema.ts';
 export async function getStaticPaths() {
 	const entries = await getCollection('docs');
 	return entries.map((entry) => {
-		const route = entry.id.endsWith('/index')
+		const route = entry.id === 'case-studies'
+			? 'archive'
+			: entry.id.endsWith('/index')
 			? entry.id.slice(0, -'/index'.length)
 			: entry.id;
 		return { params: { slug: route }, props: { entry, entries } };
@@ -33,10 +35,21 @@ const { entry, entries } = Astro.props;
 const { Content, headings } = await render(entry);
 
 const isCase = entry.data.type === 'case-study';
+const isBlog = entry.data.type === 'blog';
+const isLab = entry.data.type === 'lab';
+
+const dateForOrdering = (item: CollectionEntry<'docs'>) =>
+	item.data.published ?? item.data.updated ?? item.data.addedAt ?? '';
+const compareByDate = (a: CollectionEntry<'docs'>, b: CollectionEntry<'docs'>) => {
+	const aDate = dateForOrdering(a);
+	const bDate = dateForOrdering(b);
+	return aDate === bDate ? a.id.localeCompare(b.id) : bDate.localeCompare(aDate);
+};
 
 const title = `${entry.data.seoTitle ?? entry.data.title} | taktak.hu`;
 const description = entry.data.description;
-const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const canonicalPath = entry.id === 'case-studies' ? '/archive/' : Astro.url.pathname;
+const canonical = new URL(canonicalPath, Astro.site).href;
 const currentPath = Astro.url.pathname;
 
 const categoryKey = entry.id.split('/').slice(0, -1).join('/');
@@ -54,9 +67,7 @@ const related = entries
 			item.id.split('/').slice(0, -1).join('/') === categoryKey,
 	)
 	.sort((a, b) => {
-		const aDate = a.data.addedAt ?? '';
-		const bDate = b.data.addedAt ?? '';
-		return aDate === bDate ? a.id.localeCompare(b.id) : bDate.localeCompare(aDate);
+		return compareByDate(a, b);
 	})
 	.slice(0, 3)
 	.map((item) => ({ href: '/' + item.id + '/', title: item.data.title }));
@@ -129,26 +140,30 @@ const labelFor = (segment: string) =>
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(' ');
 
-// Index entries would otherwise dead-end: list their descendant case studies,
-// grouped by the directory they live in. Same newest-first / id-tiebreak order
-// as the related list above. Leaf category pages yield a single group.
+// Index entries would otherwise dead-end: list matching descendant entries,
+// grouped by directory. Same newest-first / id-tiebreak order as related cases.
 const isIndex = isIndexEntry(entry);
+const indexEntryType = isBlog
+	? 'blog'
+	: isLab
+		? 'lab'
+		: entry.id.startsWith('case-studies/')
+			? 'case-study'
+			: null;
 const descendantGroups: {
 	label: string;
-	items: { href: string; title: string; description?: string }[];
+	items: { href: string; title: string; description?: string; metadata?: string }[];
 }[] = [];
 if (isIndex) {
 	const prefix = entry.id + '/';
 	const descendants = entries
 		.filter(
 			(item) =>
-				item.data.type === 'case-study' && item.id.startsWith(prefix),
+				indexEntryType !== null &&
+				item.data.type === indexEntryType &&
+				item.id.startsWith(prefix),
 		)
-		.sort((a, b) => {
-			const aDate = a.data.addedAt ?? '';
-			const bDate = b.data.addedAt ?? '';
-			return aDate === bDate ? a.id.localeCompare(b.id) : bDate.localeCompare(aDate);
-		});
+		.sort(compareByDate);
 	const grouped = new Map<string, typeof descendants>();
 	for (const item of descendants) {
 		const segment = item.id.split('/').at(-2) ?? '';
@@ -163,6 +178,12 @@ if (isIndex) {
 				href: '/' + item.id + '/',
 				title: item.data.title,
 				description: item.data.description,
+				metadata: [
+					item.data.blog_type,
+					item.data.category,
+					item.data.research_status,
+					dateForOrdering(item) || undefined,
+				].filter(Boolean).join(' · ') || undefined,
 			})),
 		});
 	}
@@ -339,6 +360,19 @@ const panelProps = {
 	related,
 	reportUrl,
 };
+
+const pageMetadata = [
+	isBlog && entry.data.blog_type,
+	entry.data.category,
+	isLab && entry.data.research_status,
+	entry.data.published && `Published ${entry.data.published}`,
+	entry.data.updated && `Updated ${entry.data.updated}`,
+	entry.data.telemetry?.length && `Telemetry: ${entry.data.telemetry.join(', ')}`,
+	entry.data.defensive_analysis !== undefined &&
+		(entry.data.defensive_analysis ? 'Defensive analysis' : 'No defensive analysis'),
+	entry.data.references_verified !== undefined &&
+		(entry.data.references_verified ? 'References verified' : 'References unverified'),
+].filter(Boolean);
 ---
 
 <BaseLayout
@@ -404,6 +438,11 @@ const panelProps = {
 				<article data-page={pageKind}>
 					<div class="portfolio-prose">
 						<h1 id="_top">{entry.data.title}</h1>
+						{(isBlog || isLab) && pageMetadata.length > 0 && (
+							<p class="font-mono text-sm text-muted-foreground" aria-label="Page metadata">
+								{pageMetadata.join(' · ')}
+							</p>
+						)}
 					</div>
 					{
 						isCase && (
@@ -432,21 +471,22 @@ const panelProps = {
 							isIndex && !isCaseStudiesIndex && descendantGroups.length > 0 && (
 								<nav
 									class="portfolio-index"
-									aria-label={`Case studies in ${entry.data.title}`}
+									aria-label={`${isBlog ? 'Blog entries' : isLab ? 'Lab entries' : 'Case studies'} in ${entry.data.title}`}
 								>
 									{descendantGroups.map((group) => (
 										<>
 											{descendantGroups.length > 1 && <h2>{group.label}</h2>}
 											<ul>
-												{group.items.map((item) => (
-													<li>
-														<a href={item.href}>{item.title}</a>
-														{item.description && (
-															<span class="portfolio-index__description">
-																{item.description}
-															</span>
-														)}
-													</li>
+																{group.items.map((item) => (
+																	<li>
+																		<a href={item.href}>{item.title}</a>
+																		{item.metadata && <span class="portfolio-index__metadata">{item.metadata}</span>}
+																		{item.description && (
+																			<span class="portfolio-index__description">
+																				{item.description}
+																			</span>
+																		)}
+																	</li>
 												))}
 											</ul>
 										</>

@@ -641,7 +641,7 @@ async function testSearchDialogStability() {
 async function testExplorerInteractivity() {
 	const REACTION_TIMEOUT = 2000;
 	await setViewport(1280, 900);
-	await goto('/case-studies/');
+	await goto('/archive/');
 	await waitForHydration();
 
 	const inputExists = await evaluate(`!!document.querySelector('#explorer-search')`);

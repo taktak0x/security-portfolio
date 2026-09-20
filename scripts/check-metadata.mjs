@@ -217,7 +217,7 @@ if (!existsSync(sitemapPath)) {
 	// Content pages absent from the sitemap. 404 and redirect stubs are exempt.
 	for (const file of htmlFiles) {
 		const rel = relative(distDir, file);
-		if (rel === '404.html') continue;
+		if (rel === '404.html' || rel === 'search/index.html') continue;
 		if (/<meta\b[^>]*http-equiv\s*=\s*["']?refresh/i.test(readFileSync(file, 'utf-8'))) continue;
 		const dir = relative(distDir, join(file, '..')).split('\\').join('/');
 		const pathname = dir === '.' ? '/' : `/${dir.replace(/\/+$/, '')}`;

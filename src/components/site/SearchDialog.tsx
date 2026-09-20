@@ -39,13 +39,20 @@ function fieldValues(entry: Entry): string[] {
 export default function SearchDialog({
 	open,
 	onClose,
+	redirectOnClose,
+	titleId: providedTitleId,
 }: {
 	open: boolean;
-	onClose: () => void;
+	onClose?: () => void;
+	redirectOnClose?: string;
+	titleId?: string;
 }) {
 	const dialogRef = React.useRef<HTMLDialogElement>(null);
 	const inputRef = React.useRef<HTMLInputElement>(null);
+	const generatedTitleId = React.useId();
+	const titleId = providedTitleId ?? generatedTitleId;
 	const loadedRef = React.useRef(false);
+	const resultSelectionRef = React.useRef(false);
 	const [entries, setEntries] = React.useState<Entry[]>([]);
 	const [status, setStatus] = React.useState<Status>("idle");
 	const [query, setQuery] = React.useState("");
@@ -66,10 +73,17 @@ export default function SearchDialog({
 	React.useEffect(() => {
 		const dialog = dialogRef.current;
 		if (!dialog) return;
-		const handleClose = () => onClose();
+		const handleClose = () => {
+			if (resultSelectionRef.current) {
+				resultSelectionRef.current = false;
+				return;
+			}
+			if (onClose) onClose();
+			else if (redirectOnClose) window.location.assign(redirectOnClose);
+		};
 		dialog.addEventListener("close", handleClose);
 		return () => dialog.removeEventListener("close", handleClose);
-	}, [onClose]);
+	}, [onClose, redirectOnClose]);
 
 	// Fetch the index once, on the first open.
 	React.useEffect(() => {
@@ -126,7 +140,7 @@ export default function SearchDialog({
 	// reopen is not coalesced away by the async native `close` event) and close
 	// the native dialog. The `close` listener remains for external closes.
 	const closeDialog = React.useCallback(() => {
-		onClose();
+		if (onClose) onClose();
 		dialogRef.current?.close();
 	}, [onClose]);
 
@@ -144,13 +158,13 @@ export default function SearchDialog({
 	return (
 		<dialog
 			ref={dialogRef}
-			aria-labelledby="search-dialog-title"
+			aria-labelledby={titleId}
 			onClick={handleBackdropClick}
 			onKeyDown={handleKeyDown}
 			className="fixed inset-x-0 top-[10vh] bottom-auto mx-auto my-0 hidden h-fit max-h-[85dvh] w-[min(40rem,90vw)] flex-col overflow-hidden rounded-lg border border-border bg-background p-0 text-foreground shadow-none open:flex backdrop:bg-black/60">
 			<div className="flex min-h-0 flex-col gap-3 p-4">
 				<div className="flex shrink-0 items-center justify-between gap-3">
-					<h2 id="search-dialog-title" className="text-sm font-semibold">Search the site</h2>
+					<h2 id={titleId} className="text-sm font-semibold">Search the site</h2>
 					<Button
 						type="button"
 						variant="ghost"
@@ -178,7 +192,7 @@ export default function SearchDialog({
 							<li key={entry.href}>
 								<a
 									href={entry.href}
-									onClick={closeDialog}
+									onClick={() => { resultSelectionRef.current = true; closeDialog(); }}
 									className="block rounded-sm px-2 py-1.5 hover:bg-accent hover:text-accent-foreground">
 									<span className="flex items-baseline justify-between gap-3">
 										<span className="truncate text-sm">{entry.title ?? entry.href}</span>
