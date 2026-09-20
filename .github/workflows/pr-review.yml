@@ -35,5 +35,6 @@ jobs:
           PORTFOLIO_BOT_APP_ID: ${{ secrets.PORTFOLIO_BOT_APP_ID }}
           PORTFOLIO_BOT_INSTALLATION_ID: ${{ secrets.PORTFOLIO_BOT_INSTALLATION_ID }}
           PORTFOLIO_BOT_APP_PRIVATE_KEY: ${{ secrets.PORTFOLIO_BOT_APP_PRIVATE_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python3 .github/scripts/pr-review.py --pr-number "$PR_NUMBER"
