@@ -37,8 +37,8 @@ jobs:
           fetch-depth: 1
       - name: Run deterministic review
         env:
-          PORTFOLIO_BOT_APP_ID: ${{ secrets.PORTFOLIO_BOT_APP_ID }}
-          PORTFOLIO_BOT_INSTALLATION_ID: ${{ secrets.PORTFOLIO_BOT_INSTALLATION_ID }}
+          PORTFOLIO_BOT_APP_ID: ${{ vars.PORTFOLIO_BOT_APP_ID }}
+          PORTFOLIO_BOT_INSTALLATION_ID: ${{ vars.PORTFOLIO_BOT_INSTALLATION_ID }}
           PORTFOLIO_BOT_APP_PRIVATE_KEY: ${{ secrets.PORTFOLIO_BOT_APP_PRIVATE_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
