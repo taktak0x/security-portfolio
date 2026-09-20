@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SearchDialog from '../../components/site/SearchDialog.tsx';
+---
+
+<BaseLayout
+	title="Search | taktak.hu"
+	description="Search the taktak.hu portfolio."
+	canonical="https://taktak.hu/search/"
+	currentPath="/search/"
+	noindex
+>
+	<main id="main-content" tabindex="-1" class="mx-auto w-full max-w-[var(--portfolio-max-width)] px-4 py-10 lg:px-8">
+		<h1 class="text-[length:var(--step-4)] font-semibold tracking-tight leading-[var(--lh-tight)]">Search</h1>
+		<p class="mt-4 max-w-[var(--portfolio-copy)] text-muted-foreground">Search site content by title, topic, tool, or skill.</p>
+		<SearchDialog open={true} redirectOnClose="/" client:load />
+	</main>
+</BaseLayout>

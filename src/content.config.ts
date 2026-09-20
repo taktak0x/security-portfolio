@@ -42,6 +42,14 @@ export const collections = {
 				platform: z.string().optional(),
 				status: z.string().optional(),
 				content_type: z.string().optional(),
+				blog_type: z.enum(['analysis', 'note', 'briefing']).optional(),
+				category: z.string().optional(),
+				published: isoDate('published'),
+				updated: isoDate('updated'),
+				telemetry: z.array(z.string()).optional(),
+				defensive_analysis: z.boolean().optional(),
+				references_verified: z.boolean().optional(),
+				research_status: z.string().optional(),
 				// Optional concise browser/search title; falls back to `title` when absent.
 				seoTitle: z.string().optional(),
 				tags: z.array(z.string()).optional(),
@@ -84,7 +92,34 @@ export const collections = {
 					)
 					.optional(),
 			}).superRefine((data, ctx) => {
+				const filePath = (data._filePath ?? '').split('\\').join('/');
+				const docsPath = filePath.split('/src/content/docs/')[1] ?? '';
+				const section = docsPath.split('/')[0];
+				if ((section === 'blog' || section === 'lab') && data.type !== section) {
+					ctx.addIssue({
+						code: 'custom',
+						path: ['type'],
+						message: `Entries under ${section}/ must declare type: ${section}`,
+					});
+				}
+				if (data.blog_type !== undefined && data.type !== 'blog') {
+					ctx.addIssue({ code: 'custom', path: ['blog_type'], message: 'Only valid for blog entries' });
+				}
+				if (data.research_status !== undefined && data.type !== 'lab') {
+					ctx.addIssue({ code: 'custom', path: ['research_status'], message: 'Only valid for lab entries' });
+				}
 				if (data.type === undefined && data.content_type === undefined) return;
+
+				if (data.type === 'blog' || data.type === 'lab') {
+					if (data.content_type !== undefined) {
+						ctx.addIssue({ code: 'custom', path: ['content_type'], message: 'Not valid for blog or lab entries' });
+					}
+					const section = data.type === 'blog' ? 'blog' : 'lab';
+					if (docsPath !== section && !docsPath.startsWith(`${section}/`)) {
+						ctx.addIssue({ code: 'custom', path: ['type'], message: `${data.type} entries must live under ${section}/` });
+					}
+					return;
+				}
 
 				if (data.type !== 'case-study') {
 					ctx.addIssue({ code: 'custom', path: ['type'], message: 'Must be case-study' });
@@ -105,9 +140,16 @@ export const collections = {
 					ctx.addIssue({ code: 'custom', path: ['description'], message: 'Required' });
 				}
 
-				const filePath = (data._filePath ?? '').split('\\').join('/');
 				const windowsDir = filePath.includes('/machines/windows/');
 				const linuxDir = filePath.includes('/machines/linux/');
+				const machinePath = /\/case-studies\/htb\/machines\/(windows|linux)\//.test(filePath);
+				const sherlockPath = /\/case-studies\/htb\/sherlocks\/(dfir|soc)\//.test(filePath);
+				if (data.content_type === 'machine' && !machinePath) {
+					ctx.addIssue({ code: 'custom', path: ['content_type'], message: 'Machine entries must live under case-studies/htb/machines/{windows|linux}/' });
+				}
+				if (data.content_type === 'sherlock' && !sherlockPath) {
+					ctx.addIssue({ code: 'custom', path: ['content_type'], message: 'Sherlock entries must live under case-studies/htb/sherlocks/{dfir|soc}/' });
+				}
 				const relativePath = filePath.includes('/src/') ? filePath.slice(filePath.indexOf('/src/') + 1) : filePath || 'unknown file';
 				if (windowsDir && data.tags?.includes('linux')) {
 					ctx.addIssue({

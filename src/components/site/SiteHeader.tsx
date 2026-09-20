@@ -7,7 +7,10 @@ import SearchDialog from "./SearchDialog";
 import ThemeControl from "./ThemeControl";
 
 const LINKS = [
-	{ href: "/case-studies/", label: "Case Studies" },
+	{ href: "/archive/", label: "Archive" },
+	// { href: "/blog/", label: "Blog" },
+	// { href: "/lab/", label: "Lab" },
+	{ href: "/profiles/", label: "About" },
 	{ href: "/prolabs/", label: "Pro Labs" },
 	{ href: "/method/", label: "Method" },
 ];
@@ -21,6 +24,7 @@ export default function SiteHeader({ currentPath }: { currentPath: string }) {
 	const [menuOpen, setMenuOpen] = React.useState(false);
 	const [searchOpen, setSearchOpen] = React.useState(false);
 	const closeSearch = React.useCallback(() => setSearchOpen(false), []);
+	const isSearchPage = currentPath === "/search/";
 
 	return (
 		<header className="portfolio-header sticky top-0 z-10 border-b border-border bg-background">
@@ -56,15 +60,17 @@ export default function SiteHeader({ currentPath }: { currentPath: string }) {
 					</div>
 				</nav>
 				<div className="ml-auto flex min-w-0 items-center justify-end gap-1 sm:gap-2.5 md:justify-self-end">
-					<Button
-						variant="outline"
-						size="sm"
-						aria-label="Search"
-						className="h-8 w-8 px-0 shadow-none sm:w-auto sm:px-3 sm:has-[>svg]:px-2.5"
-						onClick={() => setSearchOpen(true)}>
-						<Search aria-hidden="true" />
-						<span className="sr-only sm:not-sr-only">Search</span>
-					</Button>
+					{!isSearchPage && (
+						<Button
+							variant="outline"
+							size="sm"
+							aria-label="Search"
+							className="h-8 w-8 px-0 shadow-none sm:w-auto sm:px-3 sm:has-[>svg]:px-2.5"
+							onClick={() => setSearchOpen(true)}>
+							<Search aria-hidden="true" />
+							<span className="sr-only sm:not-sr-only">Search</span>
+						</Button>
+					)}
 					<div className="hidden md:block ml-1 border-l border-border pl-2 sm:ml-2 sm:pl-3">
 						<ThemeControl />
 					</div>
@@ -83,7 +89,9 @@ export default function SiteHeader({ currentPath }: { currentPath: string }) {
 						)}
 					</Button>
 				</div>
-				<SearchDialog open={searchOpen} onClose={closeSearch} />
+				{!isSearchPage && (
+					<SearchDialog open={searchOpen} onClose={closeSearch} titleId="search-dialog-title" />
+				)}
 			</div>
 		</header>
 	);

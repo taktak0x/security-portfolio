@@ -21,7 +21,7 @@ export default function HomeHero({ studies }: { studies: Study[] }) {
 				</p>
 				<div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
 					<a
-						href="/case-studies/"
+						href="/archive/"
 						className="inline-flex items-center rounded-md border border-primary bg-primary px-4 py-2 font-bold text-primary-foreground no-underline hover:brightness-110 focus-visible:brightness-110"
 					>
 						Explore my work
@@ -55,7 +55,7 @@ export default function HomeHero({ studies }: { studies: Study[] }) {
 						))}
 					</ul>
 					<a
-						href="/case-studies/"
+						href="/archive/"
 						className="mt-2 inline-block py-1 font-mono text-xs text-muted-foreground no-underline hover:text-primary"
 					>
 						View all writeups
