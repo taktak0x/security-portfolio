@@ -196,10 +196,10 @@ def successful_checks(checks, head):
         return False
     latest = {name: item for name, (_, item) in latest.items()}
     return all(
-        item.get("status") == "completed"
-        and item.get("conclusion") in ("success", "neutral", "skipped")
-        for item in latest.values()
-    ) and all(latest[name].get("conclusion") == "success" for name in REQUIRED_CHECKS)
+        latest[name].get("status") == "completed"
+        and latest[name].get("conclusion") == "success"
+        for name in REQUIRED_CHECKS
+    )
 
 
 def wait_for_quality(api, number, head):
@@ -396,6 +396,7 @@ def self_test():
             "check_runs": [
                 {"name": "quality", "head_sha": head, "status": "completed", "conclusion": "success", "completed_at": "2026-09-20T00:00:00Z"},
                 {"name": "Analyze", "head_sha": head, "status": "completed", "conclusion": "success", "completed_at": "2026-09-20T00:00:01Z"},
+                {"name": "portfolio-security-gate", "head_sha": head, "status": "in_progress", "conclusion": None, "started_at": "2026-09-20T00:00:02Z"},
             ]
         },
     }
