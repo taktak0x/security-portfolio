@@ -44,4 +44,10 @@ Two long-lived branches:
 | `dev` | All work, experiments, and local verification. | None — pushing `dev` publishes nothing. |
 | `main` | Permanent, confirmed changes only. | `.github/workflows/deploy.yml` builds and deploys to GitHub Pages at https://taktak.hu/. |
 
-Work and test on `dev` (`pnpm dev` for the local server, `pnpm build` to verify the static output). Move a change to `main` only once it is final and confirmed, since pushing `main` publishes the live site. Do not force-push or rewrite published history on `main`; undo a published change with a new corrective commit on `dev`.
+Work and test on `dev` (`pnpm dev` for the local server, `pnpm build` to verify the static output). `main` is protected; `dev` is unprotected. Move a change to `main` only once it is final and confirmed, since pushing `main` publishes the live site. Do not force-push or rewrite published history on `main`; undo a published change with a new corrective commit on `dev`.
+
+Production changes use a pull request with base `main` and head `dev` or an exact trusted publisher branch pattern. Required checks are `quality` and `Analyze`; `portfolio-security-gate` is the security gate. PR #30 passed all checks and merged; PR #31 later auto-merged. No human-only approval or merge requirement is documented. Exact branch protection settings are unavailable.
+
+The `pull_request_target` review workflow verifies the trusted base SHA and must never check out or run PR-head code while App credentials are available. GitHub App values come from `vars.PORTFOLIO_BOT_APP_ID`, `vars.PORTFOLIO_BOT_INSTALLATION_ID`, and secret `PORTFOLIO_BOT_APP_PRIVATE_KEY`.
+
+GitHub Actions allowlist includes GitHub actions and the exact pinned `pnpm/action-setup` SHA. Complete future policy actions before November 2, 2026.
