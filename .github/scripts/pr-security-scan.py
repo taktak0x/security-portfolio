@@ -146,7 +146,7 @@ def scan_pr(api, number):
         if not isinstance(encoded, dict) or encoded.get("encoding") != "base64":
             raise ScanError("changed file content unavailable")
         try:
-            content = base64.b64decode(encoded.get("content", ""), validate=True)
+            content = base64.b64decode(re.sub(r"\s+", "", encoded.get("content", "")), validate=True)
         except (ValueError, TypeError):
             raise ScanError("changed file content invalid")
         if len(content) > MAX_FILE:
