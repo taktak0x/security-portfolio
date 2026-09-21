@@ -80,3 +80,4 @@ Please allow reasonable time for investigation and remediation before publicly d
 Where appropriate, coordinated disclosure and researcher credit can be discussed after the issue has been resolved.
 
 Security reports and responsible disclosure are nevertheless appreciated.
+
