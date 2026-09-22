@@ -241,16 +241,16 @@ Result: a root-context session is obtained and expires after 100 seconds.
 
 ## Outcome: operator SSH and a time-limited root session
 
-The evidence establishes service-account command execution, operator SSH access from a recovered backup key, and a time-limited root context; the root session expires after 100 seconds.
+The recorded path includes service-account command execution, operator SSH access from a recovered backup key, and a time-limited root context; the root session expires after 100 seconds.
 
 ## Recommendations: NiFi auth, H2 driver, bundle keys, docs, wrapper
 
-The actions below are recommendations; none was validated in the lab.
+The case documents the exposures described here, while the recommended controls remain untested.
 
-1. **Unauthenticated NiFi administration.** An unauthenticated workflow service let an external party configure controller services and processors. *Recommendation:* require authentication on NiFi, restrict who can create controller services and processors, and avoid exposing the administration interface beyond trusted networks. *Detection:* alert on new or modified controller services, processors, and database connection pools.
+1. **Unauthenticated NiFi administration.** An unauthenticated workflow service let an external party configure controller services and processors. *Recommendation:* require authentication on NiFi, restrict who can create controller services and processors, and avoid exposing the administration interface beyond trusted networks. *Detection:* monitor new or modified controller services, processors, and database connection pools.
 2. **CVE-2023-34468 (dynamic H2 driver and `RUNSCRIPT`).** A supported H2 driver combined with an `ExecuteSQL` processor turned a SQL configuration into host command execution. *Recommendation:* patch NiFi to a fixed release and restrict scriptable database features and driver loading to trusted administrators. *Detection:* audit flow configuration for `RUNSCRIPT` usage and untrusted driver locations.
 3. **Credentials in NiFi support bundles.** A backup operator private key was recoverable from a support-bundle directory. *Recommendation:* exclude secret material from support bundles, scan them before sharing, and rotate any key that may have been exposed. *Detection:* monitor the support-bundle directory for unexpected key or credential files.
-4. **Sensitive operational documentation and an exposed control service.** A protected-but-crackable operations guide and diagram disclosed the internal OPC UA endpoint and its unlock conditions. *Recommendation:* keep control-system documentation off general user hosts, store it encrypted with strong passphrases, and segment OPC UA services so they are not reachable from ordinary accounts. *Detection:* alert on unexpected connections to the OPC UA port.
+4. **Sensitive operational documentation and an exposed control service.** A protected-but-crackable operations guide and diagram disclosed the internal OPC UA endpoint and its unlock conditions. *Recommendation:* keep control-system documentation off general user hosts, store it encrypted with strong passphrases, and segment OPC UA services so they are not reachable from ordinary accounts. *Detection:* flag unexpected connections to the OPC UA port.
 5. **Time-limited privileged wrapper.** A permitted command gated by a manipulable process condition granted an interactive root shell. *Recommendation:* scope privileged wrappers to specific, non-interactive operations, remove direct root-shell access from them, and require stronger authorization than a process value. *Detection:* review `sudoers` for wrappers that spawn privileged shells.
 
 ## References

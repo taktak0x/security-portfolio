@@ -34,6 +34,15 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Test content checker
+        run: pnpm run check:content:test
+
+      - name: Test case preservation checker
+        run: pnpm run check:case-preservation:test
+
+      - name: Check content
+        run: pnpm run check:content -- --strict
+
       - name: Check CSP script hashes
         run: node scripts/check-csp-hashes.mjs
 

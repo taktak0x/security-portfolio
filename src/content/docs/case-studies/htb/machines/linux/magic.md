@@ -307,16 +307,16 @@ Result: the callback returns a root shell, confirmed by the root prompt.
 
 ## Outcome: root from unauthenticated web access
 
-The evidence establishes a root context on the target, reached from unauthenticated web access.
+The case reaches a root context on the target from unauthenticated web access.
 
 ## Recommendations: injection, upload validation, secrets, reuse, and SUID PATH
 
-These actions are recommendations; none was validated in the lab.
+These actions are recommendations, and no validation is documented.
 
-1. **SQL injection in the login form.** User input reached the authentication query without parameterization, so a tautology payload authenticated as an administrator. *Recommendation:* use parameterized queries or prepared statements. *Detection:* alert on authentication requests containing SQL metacharacters.
+1. **SQL injection in the login form.** User input reached the authentication query without parameterization, so a tautology payload authenticated as an administrator. *Recommendation:* use parameterized queries or prepared statements. *Detection:* alert when authentication requests contain SQL metacharacters.
 2. **Upload validation by magic bytes only.** The upload panel accepted a file based on its leading signature, so a PHP payload wrapped with a PNG header executed from the upload directory. *Recommendation:* validate extension and content together, store uploads outside the web root, and disable script execution in upload directories. *Detection:* monitor upload directories for newly written executable files.
 3. **Plaintext database credentials in the application.** The configuration file stored the database password in cleartext, yielding database access from a web foothold. *Recommendation:* keep secrets out of the web root and load them from a secrets manager or a restricted environment file. *Detection:* scan web-accessible files for credential-shaped strings.
-4. **Credential reuse between tiers.** An application account password also authenticated a system account. *Recommendation:* issue unique credentials per account and service. *Detection:* alert on a system account authenticating with a credential associated with an application.
+4. **Credential reuse between tiers.** An application account password also authenticated a system account. *Recommendation:* issue unique credentials per account and service. *Detection:* alert when a system account authenticates with a credential associated with an application.
 5. **SUID binary resolving commands through `PATH`.** `/bin/sysinfo` invoked `cat` by name, so a caller-controlled `PATH` redirected execution. *Recommendation:* call external commands by absolute path in privileged binaries and reset `PATH` to a trusted value. *Validation:* inventory SUID binaries and review them for unqualified command invocations.
 
 ## References

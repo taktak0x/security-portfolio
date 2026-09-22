@@ -5,14 +5,14 @@
 // question is whether a page would still make sense after swapping out its
 // technical nouns. It reads the source markdown directly (no build required)
 // and uses only Node built-ins. The report is informational: exit code is 0
-// by default. `--strict` turns the maximum similarity and boilerplate
-// thresholds into a non-zero exit.
+// by default. `--strict` applies structural policy gates to the same corpus.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
+const corpusRoot = process.env.CHECK_CONTENT_ROOT ? resolve(process.env.CHECK_CONTENT_ROOT) : root;
 const CORPUS_DIRS = [
-	join(root, 'src/content/docs/case-studies'),
+	join(corpusRoot, 'src/content/docs/case-studies'),
 	// The corpus is the case-study tree only. The `prolabs` and `profiles`
 	// sections are deliberately excluded because their pages are short,
 	// uniform or owner-authored narrative rather than case studies, so this
@@ -21,9 +21,7 @@ const CORPUS_DIRS = [
 
 // Thresholds that only matter under `--strict`.
 const SIMILARITY_LIMIT = 0.35; // max nearest-neighbour 3-gram Jaccard
-const BOILERPLATE_FILE_LIMIT = 20; // a 3-6 word phrase in this many files
-
-const STRICT = process.argv.includes('--strict');
+const STAGE_LABELS = /^[*_]{0,2}(?:Observation|Action|Evidence|Significance|Result|Recommendation|Detection|Validation|Truncated scan output)[*_]{0,2}:\s*/gim;
 
 const ABSTRACT_VOCAB = [
 	'structured', 'broader', 'strengthened', 'developed', 'disciplined', 'repeatable',
@@ -58,16 +56,51 @@ function walk(dir, filter) {
 }
 
 function stripFrontmatter(text) {
-	const match = text.match(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---\r?\n?/);
-	return match ? text.slice(match[0].length) : text;
+	const opening = text.match(/^\uFEFF?---\r?\n/);
+	if (!opening) return text;
+	const closing = text.slice(opening[0].length).match(/^---[ \t]*\r?\n?/m);
+	if (!closing) throw new Error('malformed or unterminated frontmatter');
+	return text.slice(opening[0].length + closing.index + closing[0].length);
 }
 
 function stripCode(text) {
-	return text.replace(/```[\s\S]*?```/g, '\n').replace(/~~~[\s\S]*?~~~/g, '\n');
+	const lines = text.replace(/\r\n?/g, '\n').split('\n');
+	const output = [];
+	let fence = null;
+
+	for (const line of lines) {
+		const match = line.match(/^ {0,3}(`{3,}|~{3,})(?:[^`~].*)?$/);
+		if (!fence && match) {
+			fence = { marker: match[1][0], length: match[1].length };
+			output.push('');
+			continue;
+		}
+		if (fence) {
+			const close = line.match(new RegExp(`^ {0,3}(${fence.marker === '`' ? '`' : '~'}{${fence.length},})[ \\t]*$`));
+			if (close) fence = null;
+			continue;
+		}
+		output.push(line);
+	}
+
+	if (fence) throw new Error(`unterminated ${fence.marker === '`' ? 'backtick' : 'tilde'} fence`);
+	return output.join('\n');
 }
 
 function stripTables(text) {
 	return text.split('\n').filter((line) => !/^\s*\|/.test(line)).join('\n');
+}
+
+function stripReferencesSection(text) {
+	return stripSection(text, /^##\s+References\s*$/i, 2);
+}
+
+function stripSection(text, heading, level) {
+	const lines = text.split('\n');
+	const start = lines.findIndex((line) => heading.test(line));
+	if (start < 0) return text;
+	const end = lines.findIndex((line, index) => index > start && new RegExp(`^#{1,${level}}\\s+`).test(line));
+	return lines.slice(0, start).concat(end < 0 ? [] : lines.slice(end)).join('\n');
 }
 
 /** Turn markdown prose into plain prose: no headings, lists, links or tags. */
@@ -82,6 +115,59 @@ function stripMarkdown(text) {
 		.replace(/[*_>]/g, ' ');
 }
 
+function stripStartingPositionMetadata(text) {
+	return text.replace(/^\s*Starting position:[ \t]+unauthenticated network access\b(?:,\s*(?:with\s+)?no provided credentials\b)?[.;]?/gim, '');
+}
+
+function stripLabEnvironmentMetadata(text) {
+	return text.replace(/^\s*(?:Constraints?|Environment|Context):[^\n]*?\bHack The Box lab environment\b[.;,]?\s*/gim, '');
+}
+
+function stripAtAGlanceSection(text) {
+	return stripSection(text, /^##\s+At a glance\s*$/i, 2);
+}
+
+function stripStageLabels(text) {
+	return text.replace(STAGE_LABELS, '');
+}
+
+function analysisMarkdown(text) {
+	return stripStageLabels(stripTables(stripAtAGlanceSection(stripReferencesSection(stripCode(stripFrontmatter(text))))));
+}
+
+function buildRecord(path, raw) {
+	const body = stripFrontmatter(raw);
+	const prose = stripLabEnvironmentMetadata(stripStartingPositionMetadata(stripMarkdown(analysisMarkdown(raw))));
+	const tokens = words(prose);
+	const headings = headingList(body);
+	return {
+		path,
+		prose,
+		tokens,
+		shingles: shingles(tokens, 3),
+		sentences: sentences(prose),
+		paragraphs: paragraphs(prose),
+		headings,
+		headingKey: [...new Set(headings.map((h) => h.toLowerCase()))].sort().join('\n'),
+		topHeadingKey: [...new Set(topHeadingList(body).map((h) => h.toLowerCase()))].sort().join('\n'),
+		dashCount: (stripCode(stripReferencesSection(body)).match(/[–—]/g) ?? []).length,
+	};
+}
+
+export { analysisMarkdown, buildRecord, stripAtAGlanceSection, stripCode, stripFrontmatter, stripReferencesSection, stripStageLabels, stripTables };
+
+export function strictFailures({ maxSimilarity, pairs, zeroUncertainty, zeroDecisions, dashViolations, corpusErrors = [] }) {
+	const failures = [];
+	for (const error of corpusErrors) failures.push(`corpus error: ${error}`);
+	if (maxSimilarity >= SIMILARITY_LIMIT) {
+		failures.push(`maximum similarity ${maxSimilarity.toFixed(3)} >= ${SIMILARITY_LIMIT} (${pairs[0].a} <-> ${pairs[0].b})`);
+	}
+	if (zeroUncertainty.length > 0) failures.push(`zero uncertainty markers in ${zeroUncertainty.length} file(s)`);
+	if (zeroDecisions.length > 0) failures.push(`zero first-person decision sentences in ${zeroDecisions.length} file(s)`);
+	if (dashViolations.length > 0) failures.push(`em/en dash found in ${dashViolations.length} file(s)`);
+	return failures;
+}
+
 function words(text) {
 	return text.toLowerCase().match(/[a-z0-9]+(?:['-][a-z0-9]+)*/g) ?? [];
 }
@@ -90,22 +176,6 @@ function shingles(tokens, size) {
 	const set = new Set();
 	for (let i = 0; i + size <= tokens.length; i += 1) set.add(tokens.slice(i, i + size).join(' '));
 	return set;
-}
-
-/** Precompute 3-6 word windows overlapping exact excluded phrases. */
-function overlappingPhraseWindows(tokens, phrases) {
-	const excluded = new Set();
-	for (const phrase of phrases) {
-		for (let phraseStart = 0; phraseStart + phrase.length <= tokens.length; phraseStart += 1) {
-			if (!phrase.every((token, offset) => tokens[phraseStart + offset] === token)) continue;
-			for (let size = 3; size <= 6; size += 1) {
-				const first = Math.max(0, phraseStart - size + 1);
-				const last = Math.min(phraseStart + phrase.length - 1, tokens.length - size);
-				for (let start = first; start <= last; start += 1) excluded.add(`${start}:${size}`);
-			}
-		}
-	}
-	return excluded;
 }
 
 function sentences(text) {
@@ -144,51 +214,33 @@ function openingPattern(paragraph) {
 
 // --- Build the corpus --------------------------------------------------------
 
-for (const dir of CORPUS_DIRS) {
-	if (!existsSync(dir)) {
-		console.error(`check-content: corpus directory not found: ${relative(root, dir)}`);
-		process.exit(1);
+function main() {
+	const strict = process.argv.includes('--strict');
+	for (const dir of CORPUS_DIRS) {
+		if (!existsSync(dir)) {
+			console.error(`check-content: corpus directory not found: ${relative(root, dir)}`);
+			process.exit(1);
+		}
 	}
-}
 
 // Index pages are excluded for the same reason as the `prolabs` and `profiles`
 // sections: they are short, uniform navigation pages rather than case studies, so
 // including them distorts every corpus-level statistic (similarity, boilerplate
 // frequency, uncertainty markers) against a corpus of 70 leaf case studies.
 const files = [...new Set(CORPUS_DIRS.flatMap((dir) => walk(dir, (name) => name.endsWith('.md') && name !== 'index.md')))].sort();
-const EXCLUDED_PHRASES = [
-	words('hack the box'),
-	words('evidence is handled'),
-	words('target identifiers credentials and secret values are replaced with role-based placeholders command syntax is preserved'),
-];
 
 const records = files.map((file) => {
-	const raw = stripFrontmatter(readFileSync(file, 'utf-8'));
-	const body = stripCode(raw);
-	const prose = stripMarkdown(stripTables(body));
-	const tokens = words(prose);
-	const headingListRaw = headingList(body);
-	return {
-		path: relative(root, file),
-		prose,
-		tokens,
-		shingles: shingles(tokens, 3),
-		excludedPhraseWindows: overlappingPhraseWindows(tokens, EXCLUDED_PHRASES),
-		sentences: sentences(prose),
-		paragraphs: paragraphs(prose),
-		headings: headingListRaw,
-		headingKey: [...new Set(headingListRaw.map((h) => h.toLowerCase()))].sort().join('\n'),
-		topHeadingKey: [...new Set(topHeadingList(body).map((h) => h.toLowerCase()))].sort().join('\n'),
-	};
+	return buildRecord(relative(root, file), readFileSync(file, 'utf-8'));
 });
 
 const lines = [];
+const corpusErrors = strict && files.length === 0 ? ['empty case-study corpus'] : [];
 const log = (line = '') => lines.push(line);
 const pct = (n, d) => (d === 0 ? '0.0' : ((100 * n) / d).toFixed(1));
 const title = (text) => log(`\n== ${text} ==`);
 
 log(`check-content: ${records.length} file(s) analysed (case-studies/**)`);
-log(`mode: ${STRICT ? 'strict' : 'report'} (informational${STRICT ? '' : '; exit 0 always'})`);
+log(`mode: ${strict ? 'strict' : 'report'} (informational${strict ? '' : '; exit 0 always'})`);
 
 // --- 1. Cross-file similarity ------------------------------------------------
 
@@ -229,7 +281,6 @@ const phraseMap = new Map();
 for (const record of records) {
 	for (let size = 3; size <= 6; size += 1) {
 		for (let i = 0; i + size <= record.tokens.length; i += 1) {
-			if (record.excludedPhraseWindows.has(`${i}:${size}`)) continue;
 			const phrase = record.tokens.slice(i, i + size).join(' ');
 			if (!phraseMap.has(phrase)) phraseMap.set(phrase, { count: 0, files: new Set() });
 			const entry = phraseMap.get(phrase);
@@ -421,6 +472,11 @@ for (const f of [...decisionPerFile].sort((x, y) => y.count - x.count || x.path.
 	log(`  ${String(f.count).padStart(3)}  ${f.path}${f.examples[0] ? `  e.g. "${f.examples[0]}"` : ''}`);
 }
 
+const dashViolations = records.filter((record) => record.dashCount > 0).map((record) => record.path);
+title('8b. Forbidden em/en dashes');
+log(`files containing em/en dashes in body prose, headings or tables: ${dashViolations.length}`);
+for (const path of dashViolations) log(`  - ${path}`);
+
 // --- 9. Habitual abstract vocabulary (warn list, not a ban) ------------------
 
 const habitualTotals = new Map(HABITUAL_ABSTRACTIONS.map((term) => [term, 0]));
@@ -447,19 +503,22 @@ for (const f of habitualPerFile.filter((f) => f.total > 0)) {
 
 console.log(lines.join('\n'));
 
-if (STRICT) {
-	const failures = [];
-	if (maxSimilarity >= SIMILARITY_LIMIT) {
-		failures.push(`maximum similarity ${maxSimilarity.toFixed(3)} >= ${SIMILARITY_LIMIT} (${pairs[0].a} <-> ${pairs[0].b})`);
-	}
-	const worstPhrase = phrases[0];
-	if (worstPhrase && worstPhrase.files.length >= BOILERPLATE_FILE_LIMIT) {
-		failures.push(`boilerplate phrase in ${worstPhrase.files.length} files >= ${BOILERPLATE_FILE_LIMIT} ("${worstPhrase.phrase}")`);
-	}
+if (strict) {
+	const failures = strictFailures({ maxSimilarity, pairs, zeroUncertainty, zeroDecisions, dashViolations, corpusErrors });
 	if (failures.length > 0) {
 		console.error(`check-content: strict failures (${failures.length}):`);
 		for (const failure of failures) console.error(`  - ${failure}`);
 		process.exit(1);
 	}
-	console.error('check-content: strict OK — thresholds not exceeded.');
+	console.error('check-content: strict OK — policy gates not exceeded.');
+}
+}
+
+if (process.argv[1] === new URL(import.meta.url).pathname) {
+	try {
+		main();
+	} catch (error) {
+		console.error(`check-content: corpus or parsing error: ${error.message}`);
+		process.exitCode = 1;
+	}
 }

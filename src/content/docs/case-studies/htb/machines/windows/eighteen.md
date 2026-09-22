@@ -262,16 +262,16 @@ Result: the `<PRIVILEGED_USER>` NTLM hash is recovered, and a WinRM session in t
 
 ## Outcome: WinRM domain user and privileged NTLM hash
 
-The evidence establishes authenticated `<DOMAIN_USER>` access over WinRM and recovery of the `<PRIVILEGED_USER>` NTLM hash from the directory through the dMSA delegation path; the `--ntds` export line is the proving artifact for the privilege transition. HTTP/IIS on port 80 was enumerated but not used against the target.
+The `--ntds` export line proves recovery of the `<PRIVILEGED_USER>` NTLM hash. It does not by itself prove the full dMSA delegation transition from authenticated `<DOMAIN_USER>` access over WinRM. That path is recorded in the preceding narrative and commands. HTTP/IIS on port 80 was enumerated but not used against the target.
 
 ## Recommendations: impersonation, weak hashing, reuse, dMSA, and DCSync
 
-None of the recommendations below was validated in the lab.
+The lab did not validate any of the recommendations below.
 
 1. **MSSQL impersonation and least privilege.** `<MSSQL_USER>` could impersonate `<DATABASE_USER>`, which exposed the application database and its credentials. *Prevent:* remove unnecessary `IMPERSONATE` grants and review them regularly.
-2. **Weak stored application credential.** A PBKDF2-SHA256 hash with 600,000 iterations was cracked against rockyou. *Prevent:* raise iteration counts, enforce length and complexity, and keep credentials out of queryable tables; *detect:* alert on access to credential-bearing tables.
+2. **Weak stored application credential.** A PBKDF2-SHA256 hash with 600,000 iterations was cracked against rockyou. *Prevent:* raise iteration counts, enforce length and complexity, and keep credentials out of queryable tables; *detect:* monitor access to credential-bearing tables.
 3. **Cross-service password reuse.** The cracked application password also authenticated `<DOMAIN_USER>` over WinRM. *Prevent:* require unique credentials per account and service; *detect:* monitor for the same secret across authentication sources.
-4. **Abusable OU delegation via dMSA.** A writable OU allowed creation of a dMSA with delegation rights, enabling S4U impersonation. *Prevent:* restrict who may create dMSAs and review OU ACLs; *detect:* alert on dMSA creation in sensitive OUs.
+4. **Abusable OU delegation via dMSA.** A writable OU allowed creation of a dMSA with delegation rights, enabling S4U impersonation. *Prevent:* restrict who may create dMSAs and review OU ACLs; *detect:* monitor dMSA creation in sensitive OUs.
 5. **Unrestricted replication rights (DCSync).** The delegated ticket allowed replication of directory secrets. *Prevent:* limit the `DS-Replication-Get-Changes` / `DS-Replication-Get-Changes-All` rights; *detect:* monitor for replication of privileged accounts outside normal replication partners.
 
 ## References

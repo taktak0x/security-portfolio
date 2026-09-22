@@ -241,11 +241,11 @@ Result: the delegated ticket yields `nt authority\system` on the domain controll
 
 ## Outcome: WinRM foothold and SYSTEM via RBCD
 
-The evidence establishes authenticated WinRM access as `<LAB_USER>` and `nt authority\system` on the domain controller through resource-based constrained delegation. The directory relationship is recorded from the source notes and not reproduced here.
+The source notes document authenticated WinRM access as `<LAB_USER>` and `nt authority\system` on the domain controller through resource-based constrained delegation. The directory relationship is recorded from the source notes and not reproduced here.
 
 ## Recommendations: embedded credentials, info attributes, computer ACLs, and guest shares
 
-None of the actions below was re-tested in the lab.
+This case study did not re-test any of the actions below.
 
 1. **Do not embed credentials in client binaries.** The LDAP service credential sat behind a static algorithm and an embedded key, so anyone who could read the utility could recover it. *Recommendation:* store service credentials in a secrets manager or Windows Credential Manager, or move to certificate-based LDAP binding.
 2. **Never store passwords in directory attributes.** A plaintext password in the `info` attribute was readable by every authenticated domain user and yielded WinRM access. *Recommendation:* keep secrets out of `info`, `description`, and `comment`, and restrict read access with the attribute's security descriptor.

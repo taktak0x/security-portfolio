@@ -35,7 +35,7 @@ outcome: "Cleartext LDAP service-account capture and local Administrator access 
 
 ## Printer panel LDAP capture to admin
 
-Return is an Easy-rated Hack The Box Windows Active Directory lab in which a misconfigured printer administration panel leaks a service account's credentials through a cleartext LDAP bind, and that account's `Server Operators` membership is then abused for local Administrator access. The chain uses only legitimate functionality and exploits no CVE. Target identifiers, credentials, and secret values are replaced with role-based placeholders; command syntax is preserved. See [how evidence is handled](/method/). Outcomes the source records without captured output are reported as documented results.
+Return is an Easy-rated Hack The Box Windows Active Directory lab in which a misconfigured printer administration panel leaks a service account's credentials through a cleartext LDAP bind, and that account's `Server Operators` membership is then abused for local Administrator access. The chain uses only legitimate functionality and exploits no CVE. Target identifiers, credentials, and secret values are replaced with role-based placeholders; command syntax is preserved. See [how evidence is handled](/method/). Where captured output is absent, this case study labels outcomes as documented results.
 
 **Attack path:** **Printer admin panel → LDAP server address redirected to a credential listener → cleartext service credential captured → WinRM access → Server Operators service reconfiguration → local Administrator**
 
@@ -164,14 +164,14 @@ Result: the service account appears in local Administrators, which confirms Admi
 
 ## Outcome: cleartext LDAP capture and local Administrator
 
-The evidence establishes local Administrator access on the host, reached without exploiting a CVE: every step used legitimate Active Directory and Windows service functionality. The limiting factors were cleartext LDAP transport, reusable credentials stored by the printer panel, and excessive `Server Operators` membership on the service account. HTTP exposure was limited to reaching the administrative panel. The LDAP server address was redirected from the panel's settings; I could not verify that change from retained output, only from the authentication it produced.
+The host reached local Administrator access without a CVE: every step used legitimate Active Directory and Windows service functionality. The limiting factors were cleartext LDAP transport, reusable credentials stored by the printer panel, and excessive `Server Operators` membership on the service account. HTTP exposure was limited to reaching the administrative panel. The LDAP server address was redirected from the panel's settings; I could not verify that change from retained output, only from the authentication it produced.
 
 ## Recommendations: LDAP transport, service-account privilege, and panel secrets
 
-The actions below are recommendations; only the abuse chain itself was exercised in the lab.
+The abuse chain itself was exercised. The actions below are recommendations that were not validated.
 
-1. **Cleartext LDAP transport.** The printer panel stored and reused an LDAP bind credential, and the bind travels unencrypted to a configurable server address, so redirecting that address disclosed the credential. *Recommendation:* enforce LDAPS and enable LDAP server signing and channel binding, and require authentication on appliance management interfaces. *Detection:* alert on LDAP binds from service hosts to unexpected destinations.
-2. **Excessive service-account privilege.** The service account held `Server Operators` membership, which let it rewrite a service binary path and obtain SYSTEM-level execution to join local Administrators. *Recommendation:* apply least privilege and remove interactive service accounts from privileged built-in groups. *Detection:* audit membership of `Server Operators` and other privileged groups, and alert on service `binPath` changes.
+1. **Cleartext LDAP transport.** The printer panel stored and reused an LDAP bind credential, and the bind travels unencrypted to a configurable server address, so redirecting that address disclosed the credential. *Recommendation:* enforce LDAPS and enable LDAP server signing and channel binding, and require authentication on appliance management interfaces. *Detection:* monitor LDAP binds from service hosts to unexpected destinations.
+2. **Excessive service-account privilege.** The service account held `Server Operators` membership, which let it rewrite a service binary path and obtain SYSTEM-level execution to join local Administrators. *Recommendation:* apply least privilege and remove interactive service accounts from privileged built-in groups. *Detection:* audit membership of `Server Operators` and other privileged groups, and monitor service `binPath` changes.
 3. **Credential-bearing appliance panels.** The admin panel was reachable and stored a reusable LDAP credential. *Recommendation:* network-restrict management interfaces, rotate any credential a panel caches, and keep credential material out of web-facing configuration.
 
 ## References

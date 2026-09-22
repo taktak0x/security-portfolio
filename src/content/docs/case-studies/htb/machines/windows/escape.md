@@ -267,11 +267,11 @@ An Administrator WinRM session is obtained through an ESC1-issued certificate an
 
 ## Recommendations: anonymous shares, SQL logs, coercion, and ESC1
 
-The actions below are recommendations; none was validated in the lab.
+The attack path demonstrates the exposures below; it does not include validation of the recommended controls.
 
-1. **Anonymous SMB share exposing a credential-bearing document.** Anonymous read access let an unauthenticated party retrieve operational credentials. *Recommendation:* require authentication on file shares and keep credential-bearing documents off reachable shares. *Detection:* alert on anonymous SMB sessions and on transfers of operational or backup documents.
+1. **Anonymous SMB share exposing a credential-bearing document.** Anonymous read access let an unauthenticated party retrieve operational credentials. *Recommendation:* require authentication on file shares and keep credential-bearing documents off reachable shares. *Detection:* detect anonymous SMB sessions and on transfers of operational or backup documents.
 2. **Credentials recorded in SQL Server error logs.** Failed-login entries disclosed a domain user's near-correct password. *Recommendation:* restrict access to SQL log directories, rotate credentials that appear in logs, and scrub authentication data from retained logs. *Detection:* monitor for failed logons that precede a successful authentication from the same source.
-3. **MSSQL NTLM coercion via `xp_dirtree`.** The SQL service account authenticated outward and its NetNTLMv2 response was captured and cracked. *Recommendation:* remove or restrict extended stored procedures that resolve remote paths, block outbound SMB from database servers, and use long, high-entropy service-account passwords. *Detection:* alert on `xp_dirtree`/`xp_fileexist` calls resolving UNC paths and on outbound SMB from database servers.
+3. **MSSQL NTLM coercion via `xp_dirtree`.** The SQL service account authenticated outward and its NetNTLMv2 response was captured and cracked. *Recommendation:* remove or restrict extended stored procedures that resolve remote paths, block outbound SMB from database servers, and use long, high-entropy service-account passwords. *Detection:* monitor `xp_dirtree`/`xp_fileexist` calls resolving UNC paths and on outbound SMB from database servers.
 4. **AD CS ESC1 template misconfiguration.** A template with low-privileged enrollment, enrollee-supplied subject, and client authentication enabled allowed domain-wide impersonation. *Recommendation:* audit certificate templates for ESC1 conditions; require manager approval or restrict enrollment, and disable enrollee-supplied subject where not needed. *Detection:* monitor certificate requests for privileged UPNs and for enrollment from ordinary domain accounts.
 
 ## References

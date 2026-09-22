@@ -183,7 +183,7 @@ Result: a root SSH private key is decrypted and used to obtain a root shell on t
 
 ## Outcome: service shell and root from stored key
 
-The evidence establishes unauthenticated file read through the Jenkins CLI, authenticated code execution as the `jenkins` service account, and root access obtained with a private key decrypted from the Jenkins credential store. The material weakness is the combination of an unauthenticated disclosure primitive, an administrative console, and a credential store that holds a root key; CVE-2024-23897 is the only software vulnerability in the path.
+The documented path includes unauthenticated file read through the Jenkins CLI, authenticated code execution as the `jenkins` service account, and root access obtained with a private key decrypted from the Jenkins credential store. The material weakness is the combination of an unauthenticated disclosure primitive, an administrative console, and a credential store that holds a root key; CVE-2024-23897 is the only software vulnerability in the path.
 
 Limitations: the credential material is not reproducible from this writeup, and I could not verify the login independently.
 
@@ -191,7 +191,7 @@ Limitations: the credential material is not reproducible from this writeup, and 
 
 Each finding pairs the observed root cause with its demonstrated impact and a prioritized action. The actions are recommendations; none was validated in the lab.
 
-1. **Unauthenticated Jenkins CLI file read (CVE-2024-23897).** Jenkins 2.441 exposed the `@` argument file read to unauthenticated requests, disclosing files readable by the service. *Recommendation:* upgrade to a release that addresses CVE-2024-23897 (fixed in 2.442) and disable the CLI when it is not required (`jenkins.CLI.disabled=true`). *Detection:* alert on CLI requests reaching argument parsing from unauthenticated sources.
+1. **Unauthenticated Jenkins CLI file read (CVE-2024-23897).** Jenkins 2.441 exposed the `@` argument file read to unauthenticated requests, disclosing files readable by the service. *Recommendation:* upgrade to a release that addresses CVE-2024-23897 (fixed in 2.442) and disable the CLI when it is not required (`jenkins.CLI.disabled=true`). *Detection:* flag unauthenticated CLI requests that reach argument parsing.
 2. **Script Console as unrestricted code execution.** The Groovy Script Console executed arbitrary code with the Jenkins process permissions. *Recommendation:* restrict Script Console access to a dedicated administrator identity, audit executions, and alert on use outside approved maintenance windows.
 3. **Privileged credentials in the CI/CD credential store.** `credentials.xml` held a root SSH private key that Jenkins' own API could decrypt. *Recommendation:* keep privileged infrastructure keys out of CI/CD stores and use narrowly scoped, time-limited deployment identities instead. *Detection:* monitor credential-store access and unexpected root SSH authentication.
 

@@ -51,6 +51,12 @@ jobs:
       - name: Check metadata
         run: pnpm run check:meta
 
+      - name: Test content checker
+        run: pnpm run check:content:test
+
+      - name: Test case preservation checker
+        run: pnpm run check:case-preservation:test
+
       - name: Check content regularity
         run: pnpm run check:content -- --strict
 

@@ -254,16 +254,16 @@ Result: the privileged context executes the substituted `tar` and returns a root
 
 ## Outcome: SSH access, application code execution, and root
 
-The evidence establishes user-level SSH access as the initial account, application-account code execution, and root through a setuid-root backup binary that invokes `tar` by relative name. Flag files are not reproduced.
+The documented path includes user-level SSH access as the initial account, application-account code execution, and root through a setuid-root backup binary that invokes `tar` by relative name. Flag files are not reproduced.
 
 ## Recommendations: default SNMP, internal exposure, the injection, and relative paths
 
-The actions below are recommendations; none was validated in the lab.
+The observed compromise informs these recommendations; the exercise did not test them.
 
-1. **SNMP exposed with the default community string.** An unauthenticated SNMP walk returned process command lines containing a reusable cleartext credential. *Recommendation:* disable SNMP where it is not required, restrict it to a management network, replace default community strings, and keep credentials out of process arguments. *Detection:* alert on inbound SNMP queries from unexpected sources and scan process listings for credential-shaped strings.
-2. **Internal-only application reachable after a foothold.** A localhost-bound monitoring service was exposed through an SSH dynamic forward. *Recommendation:* treat loopback binding as defense in depth, not an access boundary; segment management services and enforce host-based access controls. *Detection:* alert on dynamic port forwarding and on unusual access to loopback-only services from interactive sessions.
+1. **SNMP exposed with the default community string.** An unauthenticated SNMP walk returned process command lines containing a reusable cleartext credential. *Recommendation:* disable SNMP where it is not required, restrict it to a management network, replace default community strings, and keep credentials out of process arguments. *Detection:* alert when inbound SNMP queries come from unexpected sources; scan process listings for credential-shaped strings.
+2. **Internal-only application reachable after a foothold.** A localhost-bound monitoring service was exposed through an SSH dynamic forward. *Recommendation:* treat loopback binding as defense in depth, not an access boundary; segment management services and enforce host-based access controls. *Detection:* monitor dynamic port forwarding and alert when interactive sessions access loopback-only services unusually.
 3. **SQL injection in the session table.** `chart_generator.php` injected through `session_id`, letting the session store be dumped (CVE-2021-32099). *Recommendation:* upgrade Pandora FMS to a fixed release, parameterize database queries, and treat session identifiers as secrets with short lifetimes. *Detection:* monitor for injection patterns against application parameters and for session identifiers replayed from anomalous clients.
-4. **Authenticated command execution in the Events feature.** The Events AJAX endpoint passed a parameter into a system command (CVE-2020-13851). *Recommendation:* upgrade to a fixed release, restrict the Events feature to trusted roles, and run the web application under a least-privileged account. *Detection:* alert on POST requests to `ajax.php` whose `target` values contain command-like content.
+4. **Authenticated command execution in the Events feature.** The Events AJAX endpoint passed a parameter into a system command (CVE-2020-13851). *Recommendation:* upgrade to a fixed release, restrict the Events feature to trusted roles, and run the web application under a least-privileged account. *Detection:* alert when POST requests to `ajax.php` contain command-like `target` values.
 5. **Privileged binary invoking a dependency by relative name.** The setuid-root backup utility called `tar` without an absolute path. *Recommendation:* invoke dependencies by absolute path in privileged binaries, set a safe `PATH` and environment before privileged execution, and minimize the setuid attack surface. *Detection:* audit setuid binaries for relative-path command invocations.
 
 ## References

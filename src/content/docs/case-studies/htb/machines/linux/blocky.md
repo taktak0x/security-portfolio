@@ -117,7 +117,7 @@ Result: a database credential pair is recovered from the plugin source.
 
 ### 4. Database Access and Account Discovery
 
-Observation: the recovered database credential was used against the exposed phpMyAdmin instance; the source records that the login succeeded and exposed the WordPress database, including the `wp_users` table.
+Observation: the recovered database credential was used against the exposed phpMyAdmin instance; the notes report a successful login that exposed the WordPress database, including the `wp_users` table.
 
 ```text
 <DATABASE_USER> : <DATABASE_PASSWORD>
@@ -183,14 +183,14 @@ No other obstacles or failed attempts affected this path.
 
 ## Outcome: SSH via a reused credential, root via sudo
 
-The evidence establishes an authenticated SSH session as `<LAB_USER>`, reached through a credential recovered from an exposed plugin archive and reused across the database and host, and a root context obtained through the account's unrestricted `sudo` policy. The recovered password hash was not required for the path.
+An authenticated SSH session as `<LAB_USER>` was reached through a credential recovered from an exposed plugin archive and reused across the database and host. The account's unrestricted `sudo` policy then provided a root context. The recovered password hash was not required for the path.
 
 ## Recommendations: exposed plugin, credential reuse, and unrestricted sudo
 
-Each finding pairs the observed root cause with its demonstrated impact and a prioritized action. These actions are recommendations; none was validated in the lab.
+The following actions are recommendations. No validation is documented.
 
-1. **Exposed plugin directory with embedded credentials.** `/plugins` was reachable without authentication, and its Java archives contained hardcoded database credentials that yielded application and host access. *Recommendation:* keep build and development artifacts out of the web root, keep plugin directories non-browsable, and store secrets in a managed secret store instead of in source. *Detection:* alert on requests for archive files under the web root and scan deployed artifacts for credential patterns.
-2. **Credential reuse across trust boundaries.** The same password authenticated to the database and the system account, so one source disclosure crossed from application to operating system. *Recommendation:* issue unique credentials per service and system account, and rotate any value exposed in source. *Detection:* alert on successful SSH authentication that reuses a known service credential or originates from an unexpected source.
+1. **Exposed plugin directory with embedded credentials.** `/plugins` was reachable without authentication, and its Java archives contained hardcoded database credentials that yielded application and host access. *Recommendation:* keep build and development artifacts out of the web root, keep plugin directories non-browsable, and store secrets in a managed secret store instead of in source. *Detection:* inspect web-root archive requests and scan deployed artifacts for credential patterns.
+2. **Credential reuse across trust boundaries.** The same password authenticated to the database and the system account, so one source disclosure crossed from application to operating system. *Recommendation:* issue unique credentials per service and system account, and rotate any value exposed in source. *Detection:* correlate successful SSH authentication with known service credentials or unexpected source locations.
 3. **Unrestricted sudo policy.** `(ALL : ALL) ALL` let the account run any command as any user, so privilege escalation was a single command. *Recommendation:* scope `sudoers` rules to specific commands and arguments under least privilege. *Validation:* review `sudo -l` output and audit `sudoers` for blanket `ALL` grants.
 
 ## References

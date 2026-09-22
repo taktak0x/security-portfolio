@@ -113,7 +113,7 @@ ssh <VPN_USER>@<TARGET_IP>
 
 Significance: reusing the VPN pre-shared key as an interactive login credential turns an offline protocol weakness into direct host access. The account context is confirmed by the local enumeration in the next stage.
 
-Result: the credential is validated over SSH and yields a low-privileged session as `<VPN_USER>`; I could not verify the login from captured output, and the source records it as successful.
+Result: the credential is validated over SSH and yields a low-privileged session as `<VPN_USER>`; I could not verify the login from captured output, although the notes report it as successful.
 
 ### 4. Enumerate privilege-escalation vectors
 
@@ -174,14 +174,14 @@ Result: the `id` output confirms execution in the root context.
 
 ## Outcome: root command execution from unauthenticated start
 
-Root-level command execution was obtained on the target from an unauthenticated start, without a web application in the path. Remediation was not tested in the lab.
+Root-level command execution was obtained on the target from an unauthenticated start, without a web application in the path. Remediation remains untested.
 
 ## Recommendations: IKE mode, unpatched sudo, proxy log exposure
 
-The actions below are recommendations; none was validated in the lab.
+The actions below are recommendations, and none was validated.
 
 1. **IKE Aggressive Mode with PSK authentication.** Aggressive Mode transmits the PSK hash before an encrypted channel exists, enabling offline cracking, and the recovered key also authenticated SSH. *Recommendation:* disable Aggressive Mode and require Main Mode with certificate-based authentication; where PSK is unavoidable, use a long random key, since a dictionary word falls to offline cracking. *Validation:* review VPN gateway IKE policy for the negotiated mode and authentication method.
-2. **Non-standard, unpatched `sudo`.** A custom-compiled `sudo` at `/usr/local/bin/sudo` ran version 1.9.17, outside distribution patch management, and the host option selected a permissive rule for another hostname. *Recommendation:* run the distribution-provided `sudo`, keep security-critical binaries under patch management, and treat a non-standard path as a detection indicator. *Detection:* alert on `sudo`/`sudoedit` invocations that pass `-h`/`--host` while running a command, and on execution of `sudo` from unexpected paths.
+2. **Non-standard, unpatched `sudo`.** A custom-compiled `sudo` at `/usr/local/bin/sudo` ran version 1.9.17, outside distribution patch management, and the host option selected a permissive rule for another hostname. *Recommendation:* run the distribution-provided `sudo`, keep security-critical binaries under patch management, and treat a non-standard path as a detection indicator. *Detection:* correlate `sudo`/`sudoedit` commands that pass `-h`/`--host` with execution from unexpected paths.
 3. **Over-broad proxy log access.** Membership in the `proxy` group exposed Squid access logs and the internal hostname that fed the sudo bypass. *Recommendation:* restrict proxy logs to the proxy service account and designated security personnel. *Detection:* monitor reads of proxy access logs by non-service accounts.
 
 ## References

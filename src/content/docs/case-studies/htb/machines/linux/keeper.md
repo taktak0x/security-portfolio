@@ -95,7 +95,7 @@ RT 4.4.4+dfsg-2ubuntu1 (Debian)
 
 Significance: unchanged default credentials expose user records, ticket content, and attached files to anyone who tries the documented values.
 
-Result: the source records a successful administrator login with an accessible dashboard.
+Result: a successful administrator login with an accessible dashboard is reported.
 
 ### 3. User Enumeration and Credential Recovery
 
@@ -237,13 +237,13 @@ Result: a root SSH session is obtained.
 
 ## Outcome: low-privilege SSH then direct root SSH
 
-The evidence establishes user-level SSH access obtained from a password stored in a ticket comment, then direct root SSH access using an unencrypted PuTTY key recovered from the KeePass database. The static nginx page was enumeration-only, and no vulnerability in the operating system itself was exploited; every escalation followed exposed or recoverable credentials.
+The case demonstrates user-level SSH access obtained from a password stored in a ticket comment, then direct root SSH access using an unencrypted PuTTY key recovered from the KeePass database. The static nginx page was enumeration-only, and no vulnerability in the operating system itself was exploited; every escalation followed exposed or recoverable credentials.
 
 ## Recommendations: default logins, ticket secrets, KeePass dumps, key encryption
 
-None of the remediations below was validated in the lab; they are recommendations.
+The remediations below are recommendations; no validation is documented.
 
-1. **Change default credentials before deployment.** Request Tracker ships documented default administrative credentials, and unchanged defaults exposed the entire ticketing system. *Recommendation:* require a credential change before an application is reachable, and scan for vendor defaults after deployment. *Detection:* alert on successful logins to default or unused administrative accounts.
+1. **Change default credentials before deployment.** Request Tracker ships documented default administrative credentials, and unchanged defaults exposed the entire ticketing system. *Recommendation:* require a credential change before an application is reachable, and scan for vendor defaults after deployment. *Detection:* log successful logins to default or unused administrative accounts for review.
 2. **Keep secrets out of ticket fields.** A user's initial password sat in a comment field and was reused for SSH. *Recommendation:* deliver initial credentials out of band, force rotation on first use, and store secrets in a dedicated manager with audit logging. *Detection:* scan ticket and profile text for credential-like patterns.
 3. **Patch KeePass and limit dump exposure.** CVE-2023-32784 lets the master password be recovered from any memory dump taken after entry, including swap and hibernation images. *Recommendation:* upgrade KeePass to 2.54 or later and rotate stored credentials, since previously captured dumps remain exploitable offline.
 4. **Protect and encrypt private keys.** A root SSH key stored unencrypted in a KeePass note turned a database disclosure into direct host compromise. *Recommendation:* store keys encrypted with a strong, separate passphrase, or in hardware-backed storage, rather than as plaintext note content.

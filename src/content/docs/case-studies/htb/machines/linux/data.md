@@ -187,7 +187,7 @@ mkdir /mnt/host
 mount /dev/sda1 /mnt/host
 ```
 
-I could not verify the mount from separate command output; the source records the host root filesystem mounting successfully from inside the privileged container.
+I could not verify the mount from separate command output; the notes report that the host root filesystem mounted successfully from inside the privileged container.
 
 Significance: a `docker exec` granted `--privileged`, reachable through the passwordless sudo rule, exposes the host block devices, so mounting them from the container gives read and write access to host-owned files.
 
@@ -202,13 +202,13 @@ Result: the container gives root-equivalent access to the host filesystem.
 
 ## Outcome: unauthenticated file read and host root access
 
-The evidence establishes unauthenticated arbitrary file read through CVE-2021-43798, offline recovery of a Grafana credential that authenticates over SSH, and root-level access to the host filesystem through a privileged `docker exec` into the Grafana container. No further host privilege-escalation technique was required once the container was reachable under the delegated `docker exec` rule.
+The documented path starts with unauthenticated arbitrary file read through CVE-2021-43798, continues through offline recovery of a Grafana credential that authenticates over SSH, and reaches root-level access to the host filesystem through a privileged `docker exec` into the Grafana container. No further host privilege-escalation technique was required once the container was reachable under the delegated `docker exec` rule.
 
 ## Recommendations: unpatched Grafana, exposed database, docker exec grant
 
-The actions below are recommendations; none was validated in the lab.
+The demonstrated paths motivate the controls below, which this case study did not validate.
 
-1. **Vulnerable Grafana release.** Grafana 8.0.0 ships within the CVE-2021-43798 affected range, allowing unauthenticated file read through plugin asset paths. *Recommendation:* upgrade to a patched release (8.0.7, 8.1.8, 8.2.7, or 8.3.1) and track the vendor advisory. *Detection:* alert on `../` traversal sequences in requests to `public/plugins/`.
+1. **Vulnerable Grafana release.** Grafana 8.0.0 ships within the CVE-2021-43798 affected range, allowing unauthenticated file read through plugin asset paths. *Recommendation:* upgrade to a patched release (8.0.7, 8.1.8, 8.2.7, or 8.3.1) and track the vendor advisory. *Detection:* inspect requests to `public/plugins/` for `../` traversal sequences and alert when they occur.
 2. **Application secrets reachable in `grafana.db`.** Local user password hashes and salts could be exfiltrated and cracked offline. *Recommendation:* limit filesystem exposure from the web service, rotate affected credentials, and never reuse Grafana account passwords for SSH. *Detection:* monitor for large reads of `grafana.db` and for its retrieval by the Grafana service account.
 3. **Permissive `docker exec` sudo rule.** Passwordless `docker exec` as root, combined with a container holding host device access, yielded root on the host. *Recommendation:* do not allow `--privileged` in the delegated `docker exec` or expose host device mounts. *Detection:* treat privileged `docker exec *` sudo grants and `--privileged` container starts as findings to review.
 4. **Container identifier disclosure via file read.** The same traversal leaked the container hostname, enabling precise targeting of `docker exec`. *Recommendation:* fixing the underlying traversal removes this reconnaissance step; restrict service account visibility into container metadata.

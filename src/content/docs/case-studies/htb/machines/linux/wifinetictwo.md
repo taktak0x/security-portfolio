@@ -182,13 +182,13 @@ Result: an unauthenticated root shell is obtained on the router.
 
 ## Outcome: container root, WPA2 recovery, and router root SSH
 
-The evidence establishes root code execution inside the OpenPLC container, recovery of the WPA2 wireless credential through a WPS PixieDust attack, and a passwordless root SSH session on the adjacent router. The reverse-shell payload was not reproduced here, and no step beyond the lab was validated.
+The documented results show root code execution inside the OpenPLC container, recovery of the WPA2 wireless credential through a WPS PixieDust attack, and a passwordless root SSH session on the adjacent router. The reverse-shell payload was not reproduced here, and no step beyond the lab was validated.
 
 ## Recommendations: default ICS credentials, WPS, and passwordless root SSH
 
-The actions below are recommendations; none was validated in the lab.
+The exercise demonstrated these weaknesses, but it did not test the controls recommended below.
 
-1. **Default ICS credentials.** The OpenPLC runtime accepted its default credentials and compiled an uploaded program that ran with root privileges. *Recommendation:* remove default credentials on every ICS/OT management interface and restrict runtime program-upload and execution privileges to authorized operators. *Detection:* alert on logins with default or shared accounts and on program uploads to the PLC runtime.
+1. **Default ICS credentials.** The OpenPLC runtime accepted its default credentials and compiled an uploaded program that ran with root privileges. *Recommendation:* remove default credentials on every ICS/OT management interface and restrict runtime program-upload and execution privileges to authorized operators. *Detection:* raise alerts for logins with default or shared accounts and for program uploads to the PLC runtime.
 2. **WPS enabled on the access point.** WPS exposed a second authentication path whose predictable nonces yielded the WPA2 passphrase. *Recommendation:* disable WPS on all access points and verify it is off (`iw dev <WIRELESS_INTERFACE> scan | grep WPS`). *Detection:* periodically scan for access points advertising WPS.
 3. **Passwordless root SSH on the router.** The router accepted a root SSH login without a password, making network placement alone sufficient for administrative control. *Recommendation:* disable passwordless and default root logins, and require named accounts with key-based or strong password authentication. *Detection:* audit device configurations and authentication logs for root or blank-credential SSH logins.
 

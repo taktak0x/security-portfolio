@@ -160,7 +160,7 @@ ssh <LAB_USER>@<TARGET_IP>
 
 Significance: the split layout of the stored hash determines the cracker parameters, and the cracked value is a reusable account password rather than a service-specific secret.
 
-Result: the source records an authenticated SSH session as `<LAB_USER>` using the cracked password.
+Result: an authenticated SSH session as `<LAB_USER>` is reported after using the cracked password.
 
 ### 5. Privilege Escalation via Flask eval() Injection
 
@@ -214,13 +214,13 @@ Result: the returned prompt confirms root-level command execution.
 
 ## Outcome: root execution via eval() in a root Flask service
 
-The evidence establishes unauthenticated command execution as the Mirth Connect service account, recovery of a user credential from the application database, and root command execution through `eval()` injection in a root-owned Flask service. The credential recovered from the database is reused to authenticate over SSH as `<LAB_USER>`, the intermediate user-level foothold.
+The documented results show unauthenticated command execution as the Mirth Connect service account, recovery of a user credential from the application database, and root command execution through `eval()` injection in a root-owned Flask service. The credential recovered from the database is reused to authenticate over SSH as `<LAB_USER>`, the intermediate user-level foothold.
 
 ## Recommendations: deserialization patch, exposed config, root service, eval() use
 
-The actions below are recommendations; none was validated in the lab.
+The case documents the weaknesses and their effects. It does not document testing of the proposed controls.
 
-1. **Unauthenticated deserialization in Mirth Connect.** CVE-2023-43208 lets an unauthenticated request reach XStream deserialization and execute commands as the service account. *Recommendation:* upgrade Mirth Connect to at least 4.4.1, where XStream uses an allowlist instead of a denylist, and keep the service off the public internet behind a VPN or reverse proxy where patching is delayed. *Detection:* alert on unexpected POST bodies to Mirth Connect servlet paths and on command execution by the service account.
+1. **Unauthenticated deserialization in Mirth Connect.** CVE-2023-43208 lets an unauthenticated request reach XStream deserialization and execute commands as the service account. *Recommendation:* upgrade Mirth Connect to at least 4.4.1, where XStream uses an allowlist instead of a denylist, and keep the service off the public internet behind a VPN or reverse proxy where patching is delayed. *Detection:* correlate unexpected POST bodies to Mirth Connect servlet paths with command execution by the service account.
 2. **Credentials readable by the service account.** The Mirth Connect configuration stores the database password in plaintext, and that database stores account password hashes. *Recommendation:* restrict access to `mirth.properties`, move secrets to a dedicated secrets store, and rotate any credential a compromise of the service account would expose. *Detection:* monitor reads of configuration files by the service account.
 3. **Root-owned application service.** `notif.py` runs as root, so a flaw in its request handling becomes a direct privilege escalation. *Recommendation:* run the service under a dedicated unprivileged account using systemd `User=` and `Group=` directives. *Detection:* flag any network-facing service that runs as root.
 4. **`eval()` on request data.** The double `eval()` pattern turns a user-controlled field into code execution. *Recommendation:* replace `eval()` with explicit templating that does not execute code, and treat regex input filters as a usability check rather than a security boundary. *Detection:* review code paths that pass request data to `eval()`, `exec()`, or dynamic template rendering.

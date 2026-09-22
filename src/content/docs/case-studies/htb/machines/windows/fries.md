@@ -129,7 +129,7 @@ Observation: the password exposed in the pgAdmin container environment is reused
 sshpass -p '<REUSED_PASSWORD>' ssh -o PreferredAuthentications=password <SERVICE_USER>@<TARGET_IP>
 ```
 
-I checked the same password against SSH in a separate run, and it returned a valid hit for the service account:
+In a separate run, I checked the same password against SSH, and it returned a valid hit for the service account:
 
 ```text
 [22][ssh] host: <TARGET_IP>  login: <SERVICE_USER>  password: <REUSED_PASSWORD>
@@ -308,19 +308,19 @@ Result: certificate authentication for the Administrator identity succeeds and r
 
 ## Outcome: Administrator hash through ESC7 certificate abuse
 
-The evidence establishes an end-to-end path from a provided web application credential to Administrator-equivalent control of the domain, built on credential reuse across services and multiple misconfigurations rather than one critical exploit; CVE-2025-2945 is the only software vulnerability in the path.
+The path runs from a provided web application credential to Administrator-equivalent control of the domain, built on credential reuse across services and multiple misconfigurations rather than one critical exploit; CVE-2025-2945 is the only software vulnerability in the path.
 
 Limitations: the recovered secret values, the domain SID, and the hash outputs are redacted here, so the credential values themselves are not reproducible from this writeup. The exploit payload appears only as a summary.
 
 ## Recommendations: repo secrets, reuse, Docker keys, gMSA, and ESC7
 
-The actions are recommendations; none was validated in the lab.
+These are recommendations only, with no validation documented.
 
-1. **Secrets in repository history.** A committed `.env` file exposed a database connection string, which fed the pgAdmin exploit. *Recommendation:* keep secrets out of version control, rotate any credential that has ever been committed, and scan history and history rewrites with a secret scanner. *Detection:* alert on credential-shaped strings in commits and on access to management panels using database superuser accounts.
-2. **Unpatched management interface.** The exposed pgAdmin 4 panel ran a version with a known remote code execution flaw. *Recommendation:* track and promptly apply upstream releases for internet- or network-reachable management tooling, and place such interfaces behind authentication and network segmentation rather than exposing them on an internal hostname. *Detection:* inventory management-service versions and alert on unexpected outbound connections from containerized services.
-3. **Credential reuse across trust boundaries.** A container's default password authenticated to host SSH. *Recommendation:* never reuse secrets between containers, services, and host accounts; issue unique, rotated credentials per service. *Detection:* alert on successful authentication by a service account from an unexpected source.
-4. **Exposed Docker TLS key material.** Docker CA and server keys were readable on an NFS export restricted only by a bare GID. *Recommendation:* keep daemon key material off shared exports, restrict exports by host and user where the protocol supports it, and treat the CA private key as a root-equivalent secret. *Detection:* monitor access to certificate directories and alert on unexpected client certificates presented to the daemon.
-5. **Attack-controlled directory redirection.** The PWM container's LDAP endpoint was repointed to capture a cleartext bind. *Recommendation:* enforce TLS certificate validation on directory clients, protect application configuration files from in-container modification, and remove cleartext bind usage. *Detection:* alert on configuration changes to authentication endpoints and on cleartext LDAP binds.
+1. **Secrets in repository history.** A committed `.env` file exposed a database connection string, which fed the pgAdmin exploit. *Recommendation:* keep secrets out of version control, rotate any credential that has ever been committed, and scan history and history rewrites with a secret scanner. *Detection:* scan commits for credential-shaped strings and monitor access to management panels by database-superuser accounts.
+2. **Unpatched management interface.** The exposed pgAdmin 4 panel ran a version with a known remote code execution flaw. *Recommendation:* track and promptly apply upstream releases for internet- or network-reachable management tooling, and place such interfaces behind authentication and network segmentation rather than exposing them on an internal hostname. *Detection:* inventory management-service versions and detect unexpected outbound connections from containerized services.
+3. **Credential reuse across trust boundaries.** A container's default password authenticated to host SSH. *Recommendation:* never reuse secrets between containers, services, and host accounts; issue unique, rotated credentials per service. *Detection:* monitor successful authentication by a service account from an unexpected source.
+4. **Exposed Docker TLS key material.** Docker CA and server keys were readable on an NFS export restricted only by a bare GID. *Recommendation:* keep daemon key material off shared exports, restrict exports by host and user where the protocol supports it, and treat the CA private key as a root-equivalent secret. *Detection:* monitor access to certificate directories and detect unexpected client certificates presented to the daemon.
+5. **Attack-controlled directory redirection.** The PWM container's LDAP endpoint was repointed to capture a cleartext bind. *Recommendation:* enforce TLS certificate validation on directory clients, protect application configuration files from in-container modification, and remove cleartext bind usage. *Detection:* monitor configuration changes to authentication endpoints and on cleartext LDAP binds.
 6. **Over-broad gMSA read permission.** `<INFRASTRUCTURE_SERVICE_ACCOUNT>` could read the CA gMSA's password. *Recommendation:* review `PrincipalsAllowedToReadPassword` regularly and limit it to the minimum set of identities that require it. *Detection:* monitor gMSA password reads and changes to those ACLs.
 7. **CA delegation misconfiguration (ESC7).** Insecure delegated security roles let the attacker edit `EditFlags` and expose ESC6-style SAN control. *Recommendation:* audit CA security descriptors and policy flags against a hardened baseline, restrict CA management to dedicated tier-zero identities, and monitor `EditFlags` and policy-module changes. *Validation:* periodically enumerate CA misconfigurations with a tool such as Certipy and review the results.
 

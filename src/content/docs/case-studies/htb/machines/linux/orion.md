@@ -249,12 +249,12 @@ A reused credential recovered from the pre-authentication CMS exploit provided S
 
 ## Recommendations: unpatched CMS, plaintext secrets, reuse, and legacy telnet
 
-The actions below are recommendations; none was validated in the lab.
+The case establishes each exposure, while the proposed fixes remain unvalidated.
 
 1. **Unpatched public-facing CMS.** Craft CMS 5.6.16 is affected by a pre-authentication RCE, so the web tier is compromised before any authentication occurs. *Recommendation:* upgrade to a fixed release (5.6.17 or later; 4.14.15 and 3.9.15 for older branches) and track Craft CMS security advisories. *Detection:* monitor for anomalous requests to admin and application endpoints consistent with the exploit path.
 2. **Plaintext secrets in the application environment file.** The environment file stored active MySQL credentials in readable plaintext, so any file-read path on the host exposes the database. *Recommendation:* move secrets into a managed secret store, restrict file permissions, and use least-privilege database accounts that the web user cannot read.
 3. **Password reuse across application and system tiers.** The administrator hash cracked to a cleartext password that also authenticated SSH, so one recovery bridged the application and operating-system boundaries. *Recommendation:* enforce unique credentials per account and prefer key-based SSH authentication with multi-factor access.
-4. **Legacy loopback telnet service.** The local telnet service running GNU inetutils 2.7 exposed CVE-2026-24061, an authentication bypass that grants root from a local shell. *Recommendation:* remove unnecessary legacy services, upgrade or replace inetutils with a patched version, and restrict the telnet port even on loopback. *Detection:* alert on unexpected inbound telnet connections and on processes invoking `login(1)` with an attacker-controlled `USER` value.
+4. **Legacy loopback telnet service.** The local telnet service running GNU inetutils 2.7 exposed CVE-2026-24061, an authentication bypass that grants root from a local shell. *Recommendation:* remove unnecessary legacy services, upgrade or replace inetutils with a patched version, and restrict the telnet port even on loopback. *Detection:* alert when unexpected inbound telnet connections occur or processes invoke `login(1)` with an attacker-controlled `USER` value.
 
 ## References
 

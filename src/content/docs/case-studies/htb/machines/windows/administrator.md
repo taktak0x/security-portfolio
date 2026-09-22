@@ -126,7 +126,7 @@ bloodyAD -d <DOMAIN> \
 
 Significance: the reset right is equivalent to account takeover and needs no ticket or hash handling, so a single ACL edge converts the recovered service credential into control of another account.
 
-Result: the source records the reset succeeding, bringing `<THIRD_USER>` under the operator-chosen password.
+Result: the documented reset succeeds, bringing `<THIRD_USER>` under the operator-chosen password.
 
 ### 5. Vault Recovery: FTP-Hosted Password Safe
 
@@ -242,9 +242,9 @@ The evidence establishes administrative control of the domain through misconfigu
 
 ## Recommendations: ACLs, replication rights, the vault, and weak service passwords
 
-The actions below are recommendations; none was validated or re-tested in the lab.
+The actions below remain recommendations; validation and re-testing were not performed for this case study.
 
-1. **Over-provisioned directory ACLs.** `GenericAll` and `GenericWrite` on user objects let one account add service principal names and roast another account's password, and `ForceChangePassword` enabled a direct takeover. *Recommendation:* audit object-level permissions regularly with a BloodHound-style collector and remove non-standard delegation paths, especially those reaching high-value targets. *Detection:* alert on directory attribute writes to `servicePrincipalName` and on out-of-band password resets.
+1. **Over-provisioned directory ACLs.** `GenericAll` and `GenericWrite` on user objects let one account add service principal names and roast another account's password, and `ForceChangePassword` enabled a direct takeover. *Recommendation:* audit object-level permissions regularly with a BloodHound-style collector and remove non-standard delegation paths, especially those reaching high-value targets. *Detection:* monitor directory attribute writes to `servicePrincipalName` and on out-of-band password resets.
 2. **Replication rights on a non-controller principal.** A user-class object held `DS-Replication-Get-Changes-All`, which allowed the entire domain credential set to be replicated. *Recommendation:* restrict DCSync rights to Domain Controllers and explicitly designated replication principals. *Detection:* monitor directory replication requests originating from accounts other than controllers.
 3. **Credential vault on a file share.** A Password Safe database stored on FTP exposed three service credentials once its master password was cracked offline. *Recommendation:* keep credential vaults off FTP and general shares, on dedicated secrets-management infrastructure with MFA and access logging. *Validation:* inventory file shares for vault-format files and confirm none are reachable without strong, monitored authentication.
 4. **Weak Kerberoastable service passwords.** Two accounts had passwords that fell to offline dictionary cracking of their service tickets, extending the blast radius to everything their ACLs touched. *Recommendation:* enforce long, random passwords for accounts with service principal names and rotate any that have ever been Kerberoastable.

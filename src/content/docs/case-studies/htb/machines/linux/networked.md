@@ -244,15 +244,15 @@ Result: command execution as `<PRIVILEGED_ACCOUNT>` is confirmed by the returned
 
 ## Outcome: privileged account via the sudo network script
 
-The evidence establishes unauthenticated access escalating to privileged `<PRIVILEGED_ACCOUNT>` command execution through the sudo network script. Limitation: the payloads and injected values appear only as placeholders, so the chain is not reproduced here and is not reproducible from this writeup.
+The source records unauthenticated access escalating to privileged `<PRIVILEGED_ACCOUNT>` command execution through the sudo network script. Limitation: the payloads and injected values appear only as placeholders, so the chain is not reproduced here and is not reproducible from this writeup.
 
 ## Recommendations: upload checks, exposed source, filenames, and sudo delegation
 
-The actions are recommendations; none was validated in the lab.
+The lab notes do not record validation of these recommendations.
 
-1. **Extension- and MIME-only upload validation.** The upload handler trusted the MIME type and trailing extension, so a `.gif` file containing a `.php` token was stored and executed. *Recommendation:* validate the actual content, re-encode or strip images before storage, store uploads outside the web root, and disable script execution in upload directories. *Detection:* alert on executable files being written to upload or media paths.
+1. **Extension- and MIME-only upload validation.** The upload handler trusted the MIME type and trailing extension, so a `.gif` file containing a `.php` token was stored and executed. *Recommendation:* validate the actual content, re-encode or strip images before storage, store uploads outside the web root, and disable script execution in upload directories. *Detection:* alert when executable files are written to upload or media paths.
 2. **Web-application source exposed in the web root.** A reachable source archive disclosed the exact validation logic and reduced the bypass to a read. *Recommendation:* keep backups, archives, and source control artifacts out of any web-served directory. *Detection:* monitor web paths for archive and source-file retrieval.
-3. **Filenames passed unescaped into a shell command.** The cron cleanup script interpolated each filename into `exec()`, so shell metacharacters in a name became commands. *Recommendation:* avoid the shell for file operations, quote and pass names as discrete arguments, and reject filenames containing shell metacharacters. *Detection:* alert on files whose names contain command separators appearing in scheduled directories.
+3. **Filenames passed unescaped into a shell command.** The cron cleanup script interpolated each filename into `exec()`, so shell metacharacters in a name became commands. *Recommendation:* avoid the shell for file operations, quote and pass names as discrete arguments, and reject filenames containing shell metacharacters. *Detection:* alert when files with command separators in their names appear in scheduled directories.
 4. **Sudo delegation that writes untrusted input into sourced configuration.** A passwordless `sudo` rule fed user input into a generated interface file that `ifup` sourced, and the permissive regex allowed spaces. *Recommendation:* apply a strict allowlist to naming input, never write user-controlled values into sourced configuration, and remove `sudo` delegation that consumes untrusted input. *Detection:* review `sudoers` for script-based rules and monitor changes to network-script configuration files.
 
 ## References

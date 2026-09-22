@@ -228,11 +228,11 @@ The source documents no failed attempts or tradeoffs; the exploitation path was 
 
 ## Outcome: root command execution via sudo-permitted GitPython
 
-The evidence establishes root command execution on the target through a sudo-permitted GitPython script vulnerable to CVE-2022-24439, and the returned root shell prompt confirms the privilege change.
+The returned root shell prompt confirms root command execution on the target through a sudo-permitted GitPython script vulnerable to CVE-2022-24439.
 
 ## Recommendations: upload SSRF, API credentials, git history, wildcard sudo
 
-1. **Server-side request forgery in the upload feature.** The cover-upload action fetched any user-supplied URL, exposing loopback-only services. *Recommendation:* validate and allowlist outbound fetch destinations, block loopback and internal ranges, and avoid returning fetched response bodies to the requester. *Detection:* alert on requests whose `bookurl` targets internal addresses.
+1. **Server-side request forgery in the upload feature.** The cover-upload action fetched any user-supplied URL, exposing loopback-only services. *Recommendation:* validate and allowlist outbound fetch destinations, block loopback and internal ranges, and avoid returning fetched response bodies to the requester. *Detection:* flag requests whose `bookurl` targets internal addresses.
 2. **Internal API returned plaintext credentials.** The authors endpoint disclosed onboarding credentials to any caller reaching it. *Recommendation:* never return reusable credentials from APIs, and require authentication even for internal-only endpoints.
 3. **Secrets persisted in Git history.** The production password was removed from the working tree but survived in a reverted commit. *Recommendation:* purge secrets from history and treat any exposed value as compromised and rotate it; add secret scanning to the pipeline and store secrets in a manager rather than source.
 4. **GitPython `ext::` transport reachable through a wildcard sudo rule.** Enabling `-c protocol.ext.allow=always` allowed command execution, and the `*` argument let the production user choose the clone URL. *Recommendation:* upgrade GitPython to 3.1.30 or later, restrict the sudo rule to fixed arguments rather than a wildcard, and avoid enabling the `ext::` protocol.

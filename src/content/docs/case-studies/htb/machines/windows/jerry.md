@@ -98,7 +98,7 @@ Observation: cancelling the Basic Authentication prompt returns a Tomcat error p
 <user username="tomcat" password="<DEFAULT_PASSWORD>" roles="manager-gui"/>
 ```
 
-Action: I checked the documented example credential pattern against the Manager interface and then confirmed it directly.
+Action: Against the Manager interface, I checked the documented example credential pattern and then confirmed it directly.
 
 ```bash
 hydra -L /usr/share/seclists/Passwords/Default-Credentials/tomcat-betterdefaultpasslist.txt \
@@ -200,13 +200,13 @@ No significant obstacles were encountered: the default credential was valid on t
 
 ## Outcome: SYSTEM shell through WAR deployment
 
-The evidence establishes SYSTEM-level command execution obtained by deploying a JSP reverse-shell WAR through the Tomcat Manager authenticated with default credentials; the privileged `whoami` output confirms the execution context, and the Metasploit module reproduces the same result. No privilege escalation was required because the Tomcat service runs as `NT AUTHORITY\SYSTEM`. The demonstrated activity is confined to a single-host Hack The Box lab, and the deployed JSP filename and credential values are omitted.
+The privileged `whoami` output confirms SYSTEM-level command execution obtained by deploying a JSP reverse-shell WAR through the Tomcat Manager authenticated with default credentials, and the Metasploit module reproduces the same result. No privilege escalation was required because the Tomcat service runs as `NT AUTHORITY\SYSTEM`. The demonstrated activity is confined to a single-host Hack The Box lab, and the deployed JSP filename and credential values are omitted.
 
 ## Recommendations: default accounts, Manager exposure, and service privilege
 
-The compromise itself was demonstrated; the remediation was not reproduced in the lab, and none of the controls below was validated.
+The compromise itself was demonstrated. Remediation was not reproduced, and none of the controls below was validated.
 
-1. **Documented default credentials left active.** Tomcat's sample `tomcat-users.xml` ships example accounts for documentation, and a deployment that keeps them grants any network peer authenticated Manager access. *Recommendation:* remove the sample accounts and set unique credentials before the server is exposed. *Detection:* alert on Manager logins that use default or sample account names. *Validation:* confirm during deployment review that no sample accounts remain in `conf/tomcat-users.xml`.
+1. **Documented default credentials left active.** Tomcat's sample `tomcat-users.xml` ships example accounts for documentation, and a deployment that keeps them grants any network peer authenticated Manager access. *Recommendation:* remove the sample accounts and set unique credentials before the server is exposed. *Detection:* monitor Manager logins that use default or sample account names. *Validation:* confirm during deployment review that no sample accounts remain in `conf/tomcat-users.xml`.
 2. **Manager reachable without IP restriction.** Authenticated access to the Manager allows WAR deployment and therefore code execution. *Recommendation:* restrict the Manager and Host Manager to trusted hosts with a `RemoteAddrValve` in `conf/Catalina/localhost/manager.xml`.
 3. **Tomcat running under `NT AUTHORITY\SYSTEM`.** Because the service held SYSTEM privileges, a deployed WAR yielded immediate OS-level control. *Recommendation:* run Tomcat under a dedicated least-privileged service account with write access limited to its own directories.
 

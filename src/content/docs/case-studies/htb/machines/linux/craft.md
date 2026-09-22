@@ -197,7 +197,7 @@ Result: three plaintext credential pairs are recovered, one of which is reused o
 
 ### 8. Post-Exploitation: Gogs Pivot and SSH Access
 
-Observation: the reused `<USER_3>` password authenticates to Gogs, where the private `craft-infra` repository contains an SSH private key. I could not verify the Gogs login from captured output; the source records that the credentials granted access to the repository and its key.
+Observation: the reused `<USER_3>` password authenticates to Gogs, where the private `craft-infra` repository contains an SSH private key. I could not verify the Gogs login from captured output; the notes report that the credentials granted access to the repository and its key.
 
 ```bash
 ssh <USER_3>@<TARGET_HOST> -i <SSH_KEY_FILENAME>
@@ -246,11 +246,11 @@ Result: the OTP is accepted and a root shell is obtained on the host.
 
 ## Outcome: container root and host root
 
-The evidence establishes root code execution in the application container through the Flask `eval()` injection and root on the host through HashiCorp Vault's SSH OTP engine. The initial root shell was scoped to the application container, so host access depended on the credentials and SSH key recovered from the database and Gogs.
+The documented path reaches root code execution in the application container through the Flask `eval()` injection and root on the host through HashiCorp Vault's SSH OTP engine. The initial root shell was scoped to the application container, so host access depended on the credentials and SSH key recovered from the database and Gogs.
 
 ## Recommendations: committed secrets, eval(), reuse, and Vault scope
 
-The following are recommendations; none was tested in the lab.
+The following recommendations were not tested during this case study.
 
 1. **Secrets committed to source control.** Hardcoded API credentials in a repository commit authenticated to the API without any exploitation. *Recommendation:* move secrets into a secrets manager and add pre-commit or CI scanning for credential patterns. *Detection:* scan repositories and their history for committed secrets.
 2. **`eval()` on untrusted input.** The `abv` parameter is evaluated by Python, yielding root inside the container. *Recommendation:* validate `abv` with a type-safe numeric check such as a `float()` comparison. *Validation:* review code and run SAST for `eval`/`exec` reached from request data.

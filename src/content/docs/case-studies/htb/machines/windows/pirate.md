@@ -184,6 +184,8 @@ Result: an administrative WinRM session as `<GMSA_ACCOUNT>` is established.
 
 Local network discovery from that session reveals a second segment:
 
+I checked the local network from that session.
+
 ```powershell
 ipconfig /all
 arp -a
@@ -375,17 +377,17 @@ Result: the session lands in the `<SYSTEM_ACCOUNT>` context on the domain contro
 
 ## Outcome: SYSTEM on the controller via a CIFS ticket
 
-The evidence establishes administrative compromise of the domain: an administrator-impersonating CIFS ticket was issued by the domain controller and used to execute in its `<SYSTEM_ACCOUNT>` context. Limitations: I could not verify the landing context from captured output because the final session's command output was not retained, so that context rests on the source's record; the recovered secret values and the flag are omitted.
+The source notes document administrative compromise of the domain: an administrator-impersonating CIFS ticket was issued by the domain controller and used to execute in its `<SYSTEM_ACCOUNT>` context. Limitations: I could not verify the landing context from captured output because the final session's command output was not retained, so that context rests on the source's record; the recovered secret values and the flag are omitted.
 
 ## Recommendations: time sync, gMSA reads, LDAP signing, LSA secrets, and SPNs
 
-These actions are recommendations; none was validated in the lab.
+These actions are recommendations. No validation is documented.
 
 1. **Kerberos time synchronization.** Time drift produced `KRB_AP_ERR_SKEW` and blocked account enumeration. *Recommendation:* keep domain controllers and management hosts synchronized to a reliable time source. *Detection:* monitor for `KRB_AP_ERR_SKEW` events.
 2. **Over-broad gMSA read permission.** A principal listed in `PrincipalsAllowedToReadPassword` retrieved the managed account's NTLM hash directly, which gave a WinRM foothold. *Recommendation:* restrict `PrincipalsAllowedToReadPassword` to the minimum identities that require it and review it regularly. *Detection:* monitor gMSA password reads and changes to those ACLs.
-3. **NTLM relay to LDAPS with weakly protected delegation.** Relaying coerced host authentication to LDAPS modified the web host's delegation attribute, which enabled administrator impersonation via S4U2Proxy. *Recommendation:* enforce LDAP signing and channel binding, disable NTLM where possible, and restrict write access to machine-account delegation attributes. *Detection:* alert on modifications to `msDS-AllowedToActOnBehalfOfOtherIdentity` and on LDAP binds that follow coercion.
-4. **Reusable plaintext secret in LSA secrets.** A `DefaultPassword` stored on the web host provided a usable domain credential. *Recommendation:* avoid storing reusable account passwords in machine secrets or local configuration; where unavoidable, rotate and scope them. *Detection:* scan hosts for stored credentials and alert on unusual service-account use.
-5. **Machine-account SPN write access.** Write access to the domain controller machine account's SPNs allowed S4U2self/S4U2Proxy ticket issuance, pivoted to `CIFS` with the `altservice` option. *Recommendation:* treat SPN write access on privileged computer accounts as tier-zero and restrict it. *Detection:* alert on SPN modifications to domain controller machine accounts and on anomalous service-ticket requests.
+3. **NTLM relay to LDAPS with weakly protected delegation.** Relaying coerced host authentication to LDAPS modified the web host's delegation attribute, which enabled administrator impersonation via S4U2Proxy. *Recommendation:* enforce LDAP signing and channel binding, disable NTLM where possible, and restrict write access to machine-account delegation attributes. *Detection:* monitor modifications to `msDS-AllowedToActOnBehalfOfOtherIdentity` and on LDAP binds that follow coercion.
+4. **Reusable plaintext secret in LSA secrets.** A `DefaultPassword` stored on the web host provided a usable domain credential. *Recommendation:* avoid storing reusable account passwords in machine secrets or local configuration; where unavoidable, rotate and scope them. *Detection:* scan hosts for stored credentials and monitor unusual service-account use.
+5. **Machine-account SPN write access.** Write access to the domain controller machine account's SPNs allowed S4U2self/S4U2Proxy ticket issuance, pivoted to `CIFS` with the `altservice` option. *Recommendation:* treat SPN write access on privileged computer accounts as tier-zero and restrict it. *Detection:* monitor SPN modifications to domain controller machine accounts and on anomalous service-ticket requests.
 
 ## References
 

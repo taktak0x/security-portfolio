@@ -275,13 +275,13 @@ Result: an administrative shell on the domain controller is obtained.
 
 ## Outcome: certificate impersonation and domain administrator
 
-The evidence establishes administrative control of the domain through a certificate that impersonates the Administrator identity, yielding that account's NTLM hash and an interactive WinRM session. No software vulnerability was exploited: the path rests on misconfigured authentication and credential governance rather than a patchable defect. Limitation: the recovered hash and credential values are not reproduced in this writeup.
+The certificate impersonates the Administrator identity, yielding that account's NTLM hash and an interactive WinRM session, which provides administrative control of the domain. No software vulnerability was exploited: the path rests on misconfigured authentication and credential governance rather than a patchable defect. Limitation: the recovered hash and credential values are not reproduced in this writeup.
 
 ## Recommendations: guest shares, stale machine account, and ESC1
 
-The actions are recommendations; none was validated in the lab.
+No validation of these recommendations is recorded in the source.
 
-1. **Guest-readable shares and shared weak credentials.** A guest session could read internal notes, and one note disclosed that trainee accounts shared a single password, which made the username-as-password spray succeed. *Recommendation:* require authentication on file shares, keep operational or credential-related guidance out of guest-readable locations, and enforce unique, strong passwords per account. *Detection:* alert on anonymous or guest SMB sessions and on authentication sprays that try one password across many accounts.
+1. **Guest-readable shares and shared weak credentials.** A guest session could read internal notes, and one note disclosed that trainee accounts shared a single password, which made the username-as-password spray succeed. *Recommendation:* require authentication on file shares, keep operational or credential-related guidance out of guest-readable locations, and enforce unique, strong passwords per account. *Detection:* monitor anonymous or guest SMB sessions and on authentication sprays that try one password across many accounts.
 2. **Stale pre-created computer account with a predictable password.** A pre-created computer account retained its default password and was still enabled, so a single password reset produced an authenticated principal. *Recommendation:* inventory pre-created and unused computer accounts, disable or delete the ones no longer needed, and rotate any account still using a default password. *Detection:* monitor computer-account password changes and authentication attempts using default machine-account passwords.
 3. **ESC1 certificate template.** A template permitted enrollee-supplied subject values with client authentication, allowing a certificate to be issued for the Administrator identity. *Recommendation:* audit certificate templates, remove the "enrollee supplies subject" setting, and require CA manager approval or scope enrollment so low-privileged principals cannot request arbitrary identities. *Validation:* periodically enumerate certificate-services misconfigurations with a tool such as Certipy and review the results.
 

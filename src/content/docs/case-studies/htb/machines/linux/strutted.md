@@ -228,16 +228,16 @@ Result: the post-rotate hook returns a root shell, confirmed by `whoami`.
 
 ## Outcome: Tomcat shell, reused credential SSH, and tcpdump root
 
-The evidence establishes command execution as the application service account, authenticated SSH access as a separate user from a credential stored in application configuration, and a root context obtained through the delegated `tcpdump` rule.
+The documented path includes command execution as the application service account, authenticated SSH access as a separate user from a credential stored in application configuration, and a root context obtained through the delegated `tcpdump` rule.
 
 ## Recommendations: exposed archive, legacy upload, credential reuse, and tcpdump sudo
 
-The actions are recommendations; none was validated in the lab.
+The recommendations remain untested in this lab exercise.
 
-1. **Source archive exposed on the web root.** A downloadable archive disclosed the exact framework version and the upload configuration, which removed the need for guesswork. *Recommendation:* keep build artifacts and source archives out of web-served directories and deploy only the compiled application. *Detection:* alert on requests for archive or build-file extensions under the document root.
+1. **Source archive exposed on the web root.** A downloadable archive disclosed the exact framework version and the upload configuration, which removed the need for guesswork. *Recommendation:* keep build artifacts and source archives out of web-served directories and deploy only the compiled application. *Detection:* alert when requests target archive or build-file extensions under the document root.
 2. **Legacy Struts upload handling.** The upload action used the deprecated `FileUploadInterceptor`, whose request-controlled filename lets a payload traverse to a web-served path, the behavior behind CVE-2024-53677. *Recommendation:* upgrade to a patched Struts release and migrate to the current file-upload mechanism, and validate server-side upload destinations independently of request parameters. *Detection:* flag upload requests whose filename parameters contain path-traversal sequences.
 3. **Cleartext application credential reused for SSH.** Configuration readable by the service account stored a cleartext password that also authenticated a distinct SSH account. *Recommendation:* keep application secrets out of files readable by the service account, and never share a value between an application account and a system login. *Detection:* alert when an application credential is used to authenticate to a separate service such as SSH.
-4. **Unrestricted sudo rule for `tcpdump`.** A passwordless rule allowed running `tcpdump` as any user; its `-z` post-rotate hook executes a command, and `-Z root` retains root for it. *Recommendation:* scope `sudoers` to specific commands and arguments, and never delegate tools that can execute arbitrary hooks. *Detection:* review `sudo -l` output and alert on privileged `tcpdump` invocations that use `-z`.
+4. **Unrestricted sudo rule for `tcpdump`.** A passwordless rule allowed running `tcpdump` as any user; its `-z` post-rotate hook executes a command, and `-Z root` retains root for it. *Recommendation:* scope `sudoers` to specific commands and arguments, and never delegate tools that can execute arbitrary hooks. *Detection:* review `sudo -l` output and alert when privileged `tcpdump` invocations use `-z`.
 
 ## References
 

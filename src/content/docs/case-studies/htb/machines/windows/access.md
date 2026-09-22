@@ -83,7 +83,7 @@ Result: FTP, Telnet, and IIS are exposed on an out-of-support Windows host, and 
 
 ### 2. Anonymous FTP Access
 
-Observation: I checked the FTP service and found anonymous login enabled, exposing two directories, each holding one sensitive file.
+Observation: On the FTP service, I checked anonymous login and found two exposed directories, each holding one sensitive file.
 
 ```bash
 ftp <TARGET_IP>
@@ -257,13 +257,13 @@ Result: the privileged `whoami` output confirms execution in the Administrator c
 
 ## Outcome: Telnet user shell and Administrator execution
 
-The evidence establishes user-level access over Telnet using credentials recovered from anonymously reachable FTP data, and administrative command execution through a credential cached by `runas /savecred`; the privileged `whoami` output confirms the escalated context. HTTP served only for enumeration.
+The privileged `whoami` output confirms administrative command execution through a credential cached by `runas /savecred`, after user-level Telnet access using credentials recovered from anonymously reachable FTP data. HTTP served only for enumeration.
 
 ## Recommendations: anonymous FTP, plaintext secrets, Telnet, and cached credentials
 
-The actions below are recommendations; none was validated in the lab.
+The case documents these weaknesses, but not testing of the controls recommended below.
 
-1. **Anonymous FTP exposure.** Anonymous access let an unauthenticated party retrieve a database and an archived mailbox. *Recommendation:* require authentication, keep credential-bearing exports out of reachable directories, and replace FTP with an encrypted protocol such as SFTP. *Detection:* alert on anonymous FTP logins and on transfers of backup or export artifacts.
+1. **Anonymous FTP exposure.** Anonymous access let an unauthenticated party retrieve a database and an archived mailbox. *Recommendation:* require authentication, keep credential-bearing exports out of reachable directories, and replace FTP with an encrypted protocol such as SFTP. *Detection:* detect anonymous FTP logins and on transfers of backup or export artifacts.
 2. **Plaintext credentials in stored data.** The Access database stored passwords in cleartext and a mail archive disclosed another credential; those two secrets unlocked the archive and enabled the Telnet login. *Recommendation:* never store reusable credentials in databases or mailbox archives, and scan exports and backups for secrets before sharing them.
 3. **Cleartext Telnet.** Telnet transmits credentials and session data in cleartext, so a recovered credential gives a working shell. *Recommendation:* retire Telnet in favor of SSH and disable the legacy service.
 4. **Cached privileged credentials.** A `runas /savecred` entry persisted in Credential Manager, so same-user processes could run as Administrator without the password. *Recommendation:* audit and clear stored credentials with `cmdkey`, and disable saved-credential storage through Group Policy (`Network access: Do not allow storage of passwords and credentials for network authentication`). *Detection:* treat `runas /savecred` use with privileged accounts as a finding to investigate.

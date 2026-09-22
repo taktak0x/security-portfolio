@@ -247,15 +247,15 @@ Result: the root SSH private key is disclosed and used to obtain root.
 
 ## Outcome: root via disclosed 7-Zip listfile SSH key
 
-The evidence establishes root access through a disclosed root SSH private key recovered from privileged 7-Zip `@listfile` and wildcard handling; the recovered credential, hash, and key values are omitted, so the secrets are not reproducible from this writeup.
+The documented result is root access through a disclosed root SSH private key recovered from privileged 7-Zip `@listfile` and wildcard handling; the recovered credential, hash, and key values are omitted, so the secrets are not reproducible from this writeup.
 
 ## Recommendations: password-reset SQLi, upload bypass, credential reuse, and the wildcard backup
 
-The actions are recommendations; none was validated in the lab.
+These recommendations were not validated during the exercise.
 
-1. **SQL injection in the password-reset workflow.** The `email` parameter is used to build a database query, exposing the application database and the administrative credential. *Recommendation:* bind user input with parameterized queries instead of constructing SQL from request values. *Detection:* alert on SQL-metacharacter patterns and on enumeration-heavy queries from a single source.
-2. **Upload-validation bypass (CVE-2023-24249).** A web-accessible upload accepted a PHP payload renamed as an image, yielding code execution. *Recommendation:* validate uploads server-side, store them outside executable web paths, and track upstream releases for the management panel. *Detection:* alert on executable file types appearing under upload directories.
-3. **Service credential reuse.** A Monit password stored in a user-readable `.monitrc` authenticated a different local account over SSH. *Recommendation:* issue unique credentials per account and service, and restrict configuration-file readability. *Detection:* alert on successful logins where a service credential is used on an account it does not own.
+1. **SQL injection in the password-reset workflow.** The `email` parameter is used to build a database query, exposing the application database and the administrative credential. *Recommendation:* bind user input with parameterized queries instead of constructing SQL from request values. *Detection:* flag SQL-metacharacter patterns and enumeration-heavy queries from a single source.
+2. **Upload-validation bypass (CVE-2023-24249).** A web-accessible upload accepted a PHP payload renamed as an image, yielding code execution. *Recommendation:* validate uploads server-side, store them outside executable web paths, and track upstream releases for the management panel. *Detection:* monitor executable file types appearing under upload directories.
+3. **Service credential reuse.** A Monit password stored in a user-readable `.monitrc` authenticated a different local account over SSH. *Recommendation:* issue unique credentials per account and service, and restrict configuration-file readability. *Detection:* investigate successful logins where a service credential is used on an account it does not own.
 4. **Wildcard input in a privileged backup.** A root-run backup expanded a wildcard from a writable directory, turning `@listfile` handling into arbitrary-file disclosure. *Recommendation:* avoid wildcard expansion in privileged commands and pass explicit, controlled file lists. *Detection:* review sudo-allowed commands and monitor privileged backup invocations for attacker-controlled filenames.
 
 ## References

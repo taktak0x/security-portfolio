@@ -233,13 +233,13 @@ Result: the proof-of-concept returns a root shell, confirmed by `whoami`.
 
 ## Outcome: SSH user and root via kernel CVE
 
-The evidence establishes unauthenticated access to an application backup endpoint, recovery of an SSH credential, and SSH access as `<LAB_USER>`, plus a root shell from a local kernel proof-of-concept. The privilege-escalation exploit is summarized; its source is not reproduced.
+The source records unauthenticated access to an application backup endpoint, recovery of an SSH credential, and SSH access as `<LAB_USER>`, plus a root shell from a local kernel proof-of-concept. The privilege-escalation exploit is summarized; its source is not reproduced.
 
 ## Recommendations: the backup endpoint, credential reuse, version disclosure, and the kernel CVE
 
-The actions are recommendations; none was validated in the lab.
+These recommendations were not tested against the lab host.
 
-1. **Unauthenticated backup endpoint exposing key material.** The backup endpoint required no authentication and returned the AES key and IV in the `X-Backup-Security` header, so an unauthenticated party could decrypt a full system backup. *Recommendation:* require authentication and authorization on backup endpoints, deliver encryption keys out-of-band rather than in the response, and treat backups as sensitive data. *Detection:* alert on unauthenticated access to backup endpoints and on backup downloads.
+1. **Unauthenticated backup endpoint exposing key material.** The backup endpoint required no authentication and returned the AES key and IV in the `X-Backup-Security` header, so an unauthenticated party could decrypt a full system backup. *Recommendation:* require authentication and authorization on backup endpoints, deliver encryption keys out-of-band rather than in the response, and treat backups as sensitive data. *Detection:* alert when unauthenticated clients access backup endpoints or download backups.
 2. **Application-stored credential reused for system access.** The database stored a bcrypt password verifier whose cleartext also authenticated over SSH, so one crack crossed the application/system boundary. *Recommendation:* enforce strong, unique passwords and never reuse application credentials for host accounts; prefer key-based SSH. *Detection:* flag shared credentials across services and monitor for authentication from unexpected sources.
 3. **Version disclosure easing CVE mapping.** Client-side JavaScript exposed the exact application version, so vulnerability identification was straightforward once the interface was found. *Recommendation:* apply security patches promptly and minimize exposed version and build detail. *Detection:* inventory externally reachable application versions and compare them against vendor advisories.
 4. **Unpatched local kernel vulnerability.** CVE-2026-31431 allowed a local user to escalate to root. *Recommendation:* track and apply kernel security updates. *Detection:* run periodic local vulnerability checks and correlate the results with patch status.

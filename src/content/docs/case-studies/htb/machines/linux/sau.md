@@ -125,7 +125,7 @@ Result: Maltrail v0.53 is reachable through the SSRF.
 
 Observation: Maltrail v0.53's login handler passes the `username` parameter to a shell command through `subprocess.check_output(..., shell=True)`, so shell metacharacters in the username are interpreted before any authentication occurs.
 
-Action: created a basket forwarding to the login endpoint and tested injection with a timing payload.
+Action: I created a basket forwarding to the login endpoint and checked injection with a timing payload.
 
 ```bash
 curl -s -X POST http://<TARGET_IP>:55555/api/baskets/<EXPLOIT_BASKET> \
@@ -221,14 +221,14 @@ Result: a root shell is obtained, confirmed by the `uid=0(root)` identity output
 
 ## Outcome: root through the chained SSRF and pager escape
 
-The evidence establishes root-level control of the target from an unauthenticated start by chaining the request-baskets SSRF, the Maltrail login command injection, and the `less` pager escape under a passwordless `sudo` rule. Each flaw is limited on its own: the SSRF alone cannot execute code, the injection is unreachable without it, and the sudo rule requires an existing local shell. Only the combination yields full compromise.
+The documented chain reaches root-level control of the target from an unauthenticated start through request-baskets SSRF, Maltrail login command injection, and a `less` pager escape under a passwordless `sudo` rule. Each flaw is limited on its own: the SSRF alone cannot execute code, the injection is unreachable without it, and the sudo rule requires an existing local shell. Only the combination yields full compromise.
 
 ## Recommendations: SSRF parameters, shell input, and pager rules
 
-The actions below are recommendations; none was validated in the lab.
+These recommendations follow from the observed access paths; their effectiveness was not tested here.
 
-1. **SSRF-sensitive URL parameters.** request-baskets accepted loopback and private destinations in `forward_url`, so an unauthenticated caller reached firewalled internal services running on the loopback interface. *Recommendation:* validate forwarding destinations server-side and block loopback (`127.0.0.0/8`), link-local (`169.254.0.0/16`), and RFC1918 ranges; the CVE-2023-27163 advisory lists no patched release, so restrict or disable basket forwarding and isolate internal services on a segmented network. Bind internal services to non-loopback interfaces behind firewall rules as defence in depth. *Detection:* log and alert on basket forwarding to private addresses.
-2. **Unsanitised input passed to a shell.** The Maltrail login handler passed the `username` parameter to a shell command via `subprocess.check_output(..., shell=True)`, so metacharacters became OS command execution before authentication. *Recommendation:* avoid the shell entirely by calling the command with `shell=False` and an argument list, and treat all HTTP input as untrusted; Maltrail 0.55 addresses this, as recorded in the project CHANGELOG. *Detection:* alert on shell metacharacters in the login `username` field.
+1. **SSRF-sensitive URL parameters.** request-baskets accepted loopback and private destinations in `forward_url`, so an unauthenticated caller reached firewalled internal services running on the loopback interface. *Recommendation:* validate forwarding destinations server-side and block loopback (`127.0.0.0/8`), link-local (`169.254.0.0/16`), and RFC1918 ranges; the CVE-2023-27163 advisory lists no patched release, so restrict or disable basket forwarding and isolate internal services on a segmented network. Bind internal services to non-loopback interfaces behind firewall rules as defence in depth. *Detection:* log basket forwarding to private addresses and alert when those requests occur.
+2. **Unsanitised input passed to a shell.** The Maltrail login handler passed the `username` parameter to a shell command via `subprocess.check_output(..., shell=True)`, so metacharacters became OS command execution before authentication. *Recommendation:* avoid the shell entirely by calling the command with `shell=False` and an argument list, and treat all HTTP input as untrusted; Maltrail 0.55 addresses this, as recorded in the project CHANGELOG. *Detection:* alert when shell metacharacters appear in the login `username` field.
 3. **Privileged commands that invoke a pager.** A `NOPASSWD` rule for `systemctl status` let `less` run as root, and systemd before 247 did not set `LESSSECURE=1`, so the pager escaped to a root shell (CVE-2023-26604). *Recommendation:* keep pager-invoking commands (`systemctl`, `journalctl`, `man`, `less`) out of `NOPASSWD` sudoers rules, upgrade to systemd 247+, and route any monitoring need through a dedicated read-only account. *Validation:* review sudoers for pager commands and confirm `LESSSECURE`/`SYSTEMD_PAGERSECURE` behaviour on in-scope hosts.
 
 ## References

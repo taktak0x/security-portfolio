@@ -237,16 +237,16 @@ Result: the supplied artifacts support a single ordered incident sequence on `20
 
 ## Outcome: a confirmed defense-evasion chain
 
-The evidence establishes a confirmed single-host defense-evasion sequence on `2023-03-27`. Limitations: I could not verify the SharpHound output or any exfiltration, the effects of the scheduled-task script, or whether other channels were cleared.
+The logs document a confirmed single-host defense-evasion sequence on `2023-03-27`. Limitations: I could not verify the SharpHound output or any exfiltration, the effects of the scheduled-task script, or whether other channels were cleared.
 
 ## Recommendations: user-path tooling, firewall changes, audit tampering, persistence, and response
 
 The actions are recommendations; none was validated.
 
-1. **Untrusted tooling executed from a user profile.** A SharpHound package ran from the account's Downloads folder, and Defender quarantined it 14 seconds after detection. *Recommendation:* restrict execution from user download and desktop paths through application control. *Detection:* alert on Defender detections paired with execution from user-writable paths. *Validation:* confirm the archive, executable, and script are all quarantined.
-2. **Unmonitored local firewall changes.** An outbound rule for port 4444 was added through `mmc.exe` from an interactive session. *Recommendation:* restrict local firewall-rule creation and remove the added rule. *Detection:* alert on event 2004 rules with outbound direction and external ports, and hunt egress on that port.
+1. **Untrusted tooling executed from a user profile.** A SharpHound package ran from the account's Downloads folder, and Defender quarantined it 14 seconds after detection. *Recommendation:* restrict execution from user download and desktop paths through application control. *Detection:* correlate Defender detections with execution from user-writable paths. *Validation:* confirm the archive, executable, and script are all quarantined.
+2. **Unmonitored local firewall changes.** An outbound rule for port 4444 was added through `mmc.exe` from an interactive session. *Recommendation:* restrict local firewall-rule creation and remove the added rule. *Detection:* review event 2004 rules with outbound direction and external ports, then hunt egress on that port.
 3. **Audit-policy and log tampering.** An audit subcategory was changed and the Firewall channel was cleared, degrading the available evidence. *Recommendation:* protect audit policy through Group Policy and restrict channel clearing. *Detection:* correlate event 4719 with channel-clear events 104 and 1102. *Validation:* recover cleared telemetry from centralized logging or backups.
-4. **Durable scheduled-task persistence.** A scheduled task invoked a PowerShell script from a user-desktop path. *Recommendation:* restrict task creation and review existing tasks. *Detection:* monitor event 4698 for tasks that reference user-profile scripts.
+4. **Durable scheduled-task persistence.** A scheduled task invoked a PowerShell script from a user-desktop path. *Recommendation:* restrict task creation and review existing tasks. *Detection:* watch event 4698 for tasks that reference user-profile scripts.
 5. **Response readiness.** *Recommendation:* isolate the host, remove the task and outbound rule, restore the approved audit policy, rotate the affected account credentials, and review directory activity for follow-on discovery.
 
 ## References

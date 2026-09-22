@@ -164,7 +164,7 @@ public function customLogin(Request $request) {
 
 Significance: the credential is hardcoded and compared with the same loose `==` that the login bypass exploited, so reading the source discloses the secret directly.
 
-Action: authenticating as root with that credential.
+Action: I used the hardcoded controller-source credential with `su -` to switch to root.
 
 ```bash
 su -
@@ -184,11 +184,11 @@ Result: the `id` output confirms execution in the root context.
 
 ## Outcome: authenticated session, SSH key access, and root
 
-The evidence establishes authenticated web access through the PHP type-juggling bypass, recovery of the SSH private key from the ZipCrypto-protected archive, and root execution confirmed by the `id` output after authenticating with the credential read from the controller source. I could not verify the initial SSH login from captured output; it is the only transition recorded without it.
+The `id` output confirms root execution after authenticated web access through the PHP type-juggling bypass and recovery of the SSH private key from the ZipCrypto-protected archive. I could not verify the initial SSH login from captured output; it is the only transition recorded without it.
 
 ## Recommendations: loose comparison, hardcoded credentials, and ZipCrypto
 
-The actions below are recommendations; none was validated in the lab.
+The findings support the following remediation, but no remediation test is recorded.
 
 1. **Loose comparison in authentication logic.** Root cause: the controller compares user input to a credential string with `==`. Impact: the boolean `true` compares loosely equal to any non-empty string other than `"0"`, so the check is satisfied and authentication is bypassed. Recommendation: use strict comparison (`===`) and Laravel's built-in `Auth::attempt()`, which performs hashed credential checks, and audit authentication code for loose comparisons.
 2. **Credential hardcoded in application source.** Root cause: the plaintext credential is embedded in `AuthController`. Impact: any source disclosure yields the credential, and the same value grants root, so a web-application flaw escalates to host compromise. Recommendation: load secrets from environment configuration or a dedicated secrets manager and keep them out of version control.

@@ -204,14 +204,14 @@ The legacy session file was not directly readable: `last -f ./wtmp.legacy` retur
 
 ## Outcome: a confirmed compromise on 2024-03-06
 
-The evidence establishes a confirmed compromise on the target host. Limitations: I could not verify the enumeration script's execution or output, additional persistence mechanisms, credential reuse, or activity on other hosts.
+The available records confirm a compromise on the target host. Limitations: I could not verify the enumeration script's execution or output, additional persistence mechanisms, credential reuse, or activity on other hosts.
 
 ## Recommendations: SSH password auth, local accounts, /etc/shadow reads, and response
 
 Each finding pairs the observed root cause with its demonstrated impact and a prioritized action. The actions are recommendations; none was validated.
 
-1. **Password authentication on SSH.** A single external source produced hundreds of authentication events and eventually succeeded against a privileged account. *Recommendation:* prefer key-based SSH, disable password authentication for privileged accounts, and rate-limit or block repeated failures. *Detection:* alert on authentication-failure bursts followed by a success from the same source.
-2. **Unmonitored privileged local accounts.** The compromise added a new local account to the `sudo` group, granting durable root-equivalent access. *Recommendation:* restrict account creation and `sudo` group changes, and alert on them. *Detection:* monitor `useradd`/`usermod` events and audit `sudo` group membership for changes.
+1. **Password authentication on SSH.** A single external source produced hundreds of authentication events and eventually succeeded against a privileged account. *Recommendation:* prefer key-based SSH, disable password authentication for privileged accounts, and rate-limit or block repeated failures. *Detection:* flag bursts of authentication failures followed by a success from the same source.
+2. **Unmonitored privileged local accounts.** The compromise added a new local account to the `sudo` group, granting durable root-equivalent access. *Recommendation:* restrict account creation and `sudo` group changes, and generate alerts for them. *Detection:* review `useradd`/`usermod` events together with `sudo` group membership changes, and raise an alert for resulting changes.
 3. **Sensitive-file reads and remote tooling from a privileged shell.** The persistence account read `/etc/shadow` and fetched remote enumeration tooling. *Recommendation:* enforce least privilege so routine access does not require reading the credential store, and restrict outbound script retrieval from servers. *Detection:* investigate non-baseline `sudo` reads of `/etc/shadow` and outbound fetches of remote scripts.
 4. **Response readiness.** *Recommendation:* on confirmation, isolate the host, disable unauthorized accounts, rotate `root` and local credentials, review `authorized_keys`, `sudoers`, and scheduled tasks, and preserve `auth.log` and the session artifacts for further analysis.
 

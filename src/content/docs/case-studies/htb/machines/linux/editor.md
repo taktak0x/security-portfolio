@@ -93,7 +93,7 @@ Result: the wiki vhost (`<WIKI_HOST>`) is identified and resolves to an XWiki De
 
 Observation: the XWiki `SolrSearch` endpoint evaluates request input as wiki syntax, and CVE-2025-24893 lets an unauthenticated guest chain that evaluation into Groovy execution.
 
-Action: start a listener and trigger execution through a `SolrSearch` request that closes the current syntax context and nests async and Groovy macros around a command wrapper.
+Action: I checked the SolrSearch execution path by starting a listener and triggering execution through a `SolrSearch` request that closes the current syntax context and nests async and Groovy macros around a command wrapper.
 
 ```bash
 nc -nlvp <LISTENER_PORT>
@@ -196,16 +196,16 @@ Result: root command execution is confirmed by the root `id` output.
 
 ## Outcome: root execution from XWiki service foothold
 
-The evidence establishes root-level command execution on the host, reached through unauthenticated code execution in the XWiki service context and a database password that also authenticated SSH for the local account. The escalation rests on an unpatched macro-injection flaw, credential reuse across services, and a SUID helper that resolved a dependency through the caller's `PATH`.
+The case documents root-level command execution on the host, reached through unauthenticated code execution in the XWiki service context and a database password that also authenticated SSH for the local account. The escalation rests on an unpatched macro-injection flaw, credential reuse across services, and a SUID helper that resolved a dependency through the caller's `PATH`.
 
 ## Recommendations: XWiki patch, credential reuse, SUID PATH, group scope
 
-The actions are recommendations; none was validated in the lab.
+I did not test these recommendations during this exercise.
 
 1. **Unpatched XWiki macro injection (CVE-2025-24893).** A guest could reach code execution through `SolrSearch` on the exposed instance. *Recommendation:* upgrade to a fixed release (15.10.11, 16.4.1, or 16.5.0RC1) and restrict access to macro-execution endpoints. *Detection:* monitor requests to `SolrSearch` and unexpected `groovy`/`async` macro content in request parameters.
 2. **Database password reused as an interactive credential.** The XWiki database password authenticated SSH for `<LOCAL_USER>`. *Recommendation:* issue unique, least-privilege credentials per service, never reuse application secrets for interactive accounts, and rotate any secret exposed in configuration. *Detection:* scan configuration and secret stores for credentials reused across services.
 3. **SUID helper with an untrusted search path.** Netdata `ndsudo` executed the first `nvme` binary found in the caller's `PATH` with root privileges (CVE-2024-32019). *Recommendation:* resolve privileged dependencies by absolute path, sanitize `PATH` inside SUID binaries, and update Netdata to a fixed release. *Detection:* audit SUID helpers for `PATH`-based resolution and monitor privileged child-process execution from monitoring agents.
-4. **Over-broad service group membership.** Membership in `netdata` allowed the low-privileged account to run the SUID helpers. *Recommendation:* keep `netdata` group membership limited to the service account and review it against least privilege. *Detection:* alert on changes to service group membership.
+4. **Over-broad service group membership.** Membership in `netdata` allowed the low-privileged account to run the SUID helpers. *Recommendation:* keep `netdata` group membership limited to the service account and review it against least privilege. *Detection:* monitor service group membership changes.
 
 ## References
 

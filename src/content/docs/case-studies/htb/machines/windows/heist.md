@@ -258,18 +258,18 @@ WINRM  <TARGET_IP>  5985  <TARGET_HOST>  [+] <TARGET_HOST>\administrator:<ADMIN_
 ## Challenges: rejected creds, sparse usernames, and dump targeting
 
 - The recovered router credentials were wrong for the web login form, so the path pivoted away from the portal to SMB and WinRM.
-- Only the issue author's username was visible initially, so I checked the RID brute-force result to supply usernames for the password spray; the spray then revealed the reuse on `<WINRM_USER>`.
+- Only the issue author's username was visible initially, so to supply usernames for the password spray, I checked the RID brute-force result; the spray then revealed the reuse on `<WINRM_USER>`.
 - Correlating the todo note with the process listing made the dump targeted: both pointed to active browser use, so dumping a single `firefox.exe` process was the most direct route to a stored credential.
 
 ## Outcome: local Administrator WinRM from browser memory
 
-The evidence establishes unauthenticated-to-Administrator access: secrets leaked from a guest-reachable device configuration were reused across SMB and WinRM, and the final Administrator credential was validated only over WinRM. The final escalation did not require a kernel exploit.
+The path reaches Administrator from unauthenticated access: secrets leaked from a guest-reachable device configuration were reused across SMB and WinRM, and the final Administrator credential was validated only over WinRM. The final escalation did not require a kernel exploit.
 
 ## Recommendations: device configs, weak secrets, reuse, RID enumeration, and browser memory
 
-The actions below are recommendations; none was tested in the lab.
+The actions below remain recommendations; this case study did not test them.
 
-1. **Guest-accessible device configuration.** An unauthenticated guest could retrieve a router configuration holding three credential artifacts. *Preventive:* require authentication and authorization on issue attachments and keep device configurations out of web-accessible storage. *Detective:* alert on access to configuration or export files from guest sessions.
+1. **Guest-accessible device configuration.** An unauthenticated guest could retrieve a router configuration holding three credential artifacts. *Preventive:* require authentication and authorization on issue attachments and keep device configurations out of web-accessible storage. *Detective:* monitor access to configuration or export files from guest sessions.
 2. **Reversible and weak secrets on network devices.** Cisco type 7 values decode directly and the type 5 MD5-crypt enable secret fell to a dictionary attack. *Preventive:* migrate to non-reversible password types (type 8 PBKDF2-SHA256 or type 9 scrypt) and remove type 5 and type 7 secrets.
 3. **Credential reuse across infrastructure and Windows accounts.** The router `<ROUTER_ADMIN>` password also authenticated `<WINRM_USER>`, and the cracked enable secret authenticated SMB. *Preventive:* issue unique credentials per system tier and rotate shared secrets. *Detective:* monitor for one secret used against multiple services.
 4. **Unauthenticated RID enumeration.** Any valid SMB account enumerated every local user, enabling a targeted spray. *Preventive/detective:* restrict low-privileged local SAM enumeration and monitor for RID brute-force patterns.
