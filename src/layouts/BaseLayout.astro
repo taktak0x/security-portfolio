@@ -27,6 +27,12 @@ const ogImage =
 	ogType === "article"
 		? new URL(`/og${new URL(canonical).pathname.replace(/\/$/, "")}.png`, canonical).href
 		: "https://taktak.hu/og-default.png";
+const caseStudyRoute =
+	ogType === "article" ? `${new URL(canonical).pathname.replace(/\/+$/, "")}/` : undefined;
+const caseStudyIdentity =
+	caseStudyRoute ? `case-study:${caseStudyRoute}` : undefined;
+const caseStudyStatus = caseStudyRoute ? "published-ready" : undefined;
+const caseStudyContentType = caseStudyRoute?.includes("/sherlocks/") ? "sherlock" : caseStudyRoute ? "machine" : undefined;
 ---
 
 <!doctype html>
@@ -50,6 +56,10 @@ const ogImage =
 		<meta property="og:title" content={title} />
 		<meta property="og:description" content={description} />
 		<meta property="og:url" content={canonical} />
+		{caseStudyIdentity && <meta name="case-study-identity" content={caseStudyIdentity} />}
+		{caseStudyRoute && <meta name="case-study-route" content={caseStudyRoute} />}
+		{caseStudyStatus && <meta name="case-study-status" content={caseStudyStatus} />}
+		{caseStudyContentType && <meta name="case-study-content-type" content={caseStudyContentType} />}
 		<meta property="og:image" content={ogImage} />
 		<meta property="og:image:width" content="1200" />
 		<meta property="og:image:height" content="630" />
