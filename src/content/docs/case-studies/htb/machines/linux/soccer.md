@@ -229,14 +229,14 @@ Result: a root context is obtained through the permitted `dstat` command.
 
 ## Outcome: web shell, SSH credential, and dstat root
 
-The evidence establishes default-credential file-manager access, code execution as the web-service account, a credential recovered through WebSocket SQL injection and validated over SSH, and root through `dstat` plugin loading under a delegated `doas` rule.
+The documented path starts with default-credential file-manager access, continues through code execution as the web-service account and a credential recovered through WebSocket SQL injection and validated over SSH, and ends with root through `dstat` plugin loading under a delegated `doas` rule.
 
 ## Recommendations: default credentials, executable uploads, WebSocket input, and doas scope
 
-The actions are recommendations; none was validated in the lab.
+No recommendation in this section was tested during the lab.
 
-1. **Default credentials on administrative software.** Known default credentials granted full file-management access. *Recommendation:* remove or rotate default credentials before deployment and restrict administrative interfaces to trusted access paths. *Detection:* alert on logins using vendor-default accounts and on administrative interface access from unexpected sources.
-2. **Executable upload directory.** `/tiny/uploads` executed uploaded PHP, which gave code execution as the web-service account. *Recommendation:* store uploads outside executable paths and explicitly disable server-side execution in upload directories. *Detection:* alert on newly written executable files under the web root.
+1. **Default credentials on administrative software.** Known default credentials granted full file-management access. *Recommendation:* remove or rotate default credentials before deployment and restrict administrative interfaces to trusted access paths. *Detection:* alert when vendor-default accounts log in or administrative interfaces receive access from unexpected sources.
+2. **Executable upload directory.** `/tiny/uploads` executed uploaded PHP, which gave code execution as the web-service account. *Recommendation:* store uploads outside executable paths and explicitly disable server-side execution in upload directories. *Detection:* alert when executable files are newly written under the web root.
 3. **Unvalidated WebSocket endpoint.** The ticket-checking message reached the database without input handling and disclosed an account credential. *Recommendation:* apply parameterized queries and input validation to WebSocket handlers as well as HTTP routes. *Detection:* log and review WebSocket payloads for injection patterns.
 4. **Over-broad `doas` delegation.** A passwordless root rule for `dstat` allowed arbitrary code execution through its plugin loading. *Recommendation:* review `sudo` and `doas` allowlists against the full behavior of each permitted program, and exclude binaries that load user-controlled extensions. *Detection:* audit delegation rules for plugin-capable or scriptable binaries and monitor plugin directories for unexpected files.
 

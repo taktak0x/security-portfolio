@@ -162,15 +162,15 @@ The source documents no failed attempts, dead ends, or explicit tradeoffs for th
 
 ## Outcome: administrative certificate authentication
 
-The evidence establishes a path from a low-privileged domain account to administrative certificate authentication. The escalation abused legitimate AD CS permissions; no software vulnerability was involved.
+The path runs from a low-privileged domain account to administrative certificate authentication. The escalation abused legitimate AD CS permissions; no software vulnerability was involved.
 
 Terminal output was not retained for the MSSQL command-execution shell, the template-owner and shadow-credential acquisition, or the certificate-based authentication, so those transitions are reported as recorded and are not reproduced from evidence.
 
 ## Recommendations: share hygiene, xp_cmdshell, config files, reuse, and ESC4
 
-Each finding pairs the observed root cause with its demonstrated impact and a prioritized action. The actions below are recommendations; none was validated in the lab.
+Each finding pairs the observed root cause with its demonstrated impact and a prioritized action. The proposed controls were not tested during this exercise.
 
-1. **Credential-bearing file on a share readable by a low-privileged account.** A spreadsheet exposed a live MSSQL `sa` credential. *Recommendation:* restrict share membership, keep administrative secrets out of ordinary business files, and use service-specific database logins instead of `sa`. *Detection:* alert on access to database or finance exports and on `sa` logins from workstations.
+1. **Credential-bearing file on a share readable by a low-privileged account.** A spreadsheet exposed a live MSSQL `sa` credential. *Recommendation:* restrict share membership, keep administrative secrets out of ordinary business files, and use service-specific database logins instead of `sa`. *Detection:* monitor access to database or finance exports and on `sa` logins from workstations.
 2. **Enablement of `xp_cmdshell`.** Database access became operating-system command execution under `<SQL_SVC>`. *Recommendation:* disable `xp_cmdshell` (`sp_configure 'xp_cmdshell', 0`) unless a documented need exists, and grant SQL logins the minimum privilege. *Detection:* monitor `sp_configure` changes and `xp_cmdshell` invocations that spawn shell or download processes.
 3. **Service-account password retained in the SQL Server install configuration.** The setup file still held `SQLSVCPASSWORD`. *Recommendation:* delete or restrict the installation configuration file after setup and rotate any credential it contains. *Detection:* scan install directories and backups for credential-bearing configuration files.
 4. **Password reuse between the SQL service account and a domain user.** One secret authenticated two accounts. *Recommendation:* issue unique, rotated credentials per account and service. *Detection:* alert when a service-account credential authenticates a different identity or from an unexpected host.

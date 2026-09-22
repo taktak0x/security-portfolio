@@ -230,7 +230,7 @@ Result: the `whoami /all` output confirms execution as `NT AUTHORITY\SYSTEM`.
 
 ## Challenges and Decisions
 
-I checked the notes and found no failed attempts or tradeoffs; the chain followed the documented path.
+I checked the notes for failed attempts or tradeoffs and found none; the chain followed the documented path.
 
 ## Outcome: administrative MSSQL and SYSTEM code execution
 
@@ -238,7 +238,7 @@ The chain ends with administrative MSSQL access through a forged silver ticket a
 
 ## Recommendations: resets, service passwords, Kerberos, and MSSQL
 
-The recommendations below follow the source remediation; none was re-tested in the lab.
+The recommendations below follow the source remediation; this case study did not re-test them.
 
 1. **Require verification for password resets.** The portal reset any password to the username with no confirmation, turning a known username into a credential. *Recommendation:* require secondary or e-mail verification before a reset and enforce complexity on the new password.
 2. **Use strong, random passwords for service accounts.** The `<SERVICE_ACCOUNT>` password was recovered from a Kerberos TGS hash because it was a dictionary word. *Recommendation:* migrate service accounts to Group Managed Service Accounts (gMSAs) to remove password-based authentication.

@@ -210,11 +210,11 @@ Start-Process "msiexec.exe" -ArgumentList "/fa `"<MSI_PATH>`" /qn /l*vx <LOG_PAT
 
 Significance: the repair reinstalls the package as SYSTEM and runs the staged batch files, so a low-privileged service-account process can create a new domain account and add it to the local Administrators group.
 
-Result: the source records the repair as successful and the privileged domain account as created, but captures no repair-console output. I could not verify the repair directly; the next stage's authentication of the new account confirms execution.
+Result: the notes describe the repair as successful and the privileged domain account as created, but capture no repair-console output. I could not verify the repair directly; the next stage's authentication of the new account confirms execution.
 
 ### 9. Domain Administrator Access
 
-Observation: I checked the created account's local group membership and it showed the Administrators group.
+Observation: For the created account, I checked the local group membership, which showed the Administrators group.
 
 ```bash
 nxc smb <DOMAIN> -u '<NEW_ADMIN_ACCOUNT>' -p '<NEW_ADMIN_PASSWORD>' -k
@@ -242,13 +242,13 @@ No failed attempts, alternate approaches, or troubleshooting are recorded; the c
 
 ## Outcome: domain administrator via a created account
 
-The evidence establishes domain administrator access obtained entirely through misconfiguration, with no Windows vulnerability required: an upload handler that initiates outbound connections, a crackable service-account password, permissive AD delegation (`AddSelf` and `ForceChangePassword`), and an unpatched third-party monitoring agent whose MSI repair runs staged payloads as SYSTEM. The only CVE required was in the CheckMK agent (CVE-2024-0670); the operating system and directory services were used through their legitimate, misconfigured features. The final access level is supported by the `Pwn3d!` authentication result and the Administrators group membership.
+The path reaches domain administrator access through misconfiguration, with no Windows vulnerability required: an upload handler that initiates outbound connections, a crackable service-account password, permissive AD delegation (`AddSelf` and `ForceChangePassword`), and an unpatched third-party monitoring agent whose MSI repair runs staged payloads as SYSTEM. The only CVE required was in the CheckMK agent (CVE-2024-0670); the operating system and directory services were used through their legitimate, misconfigured features. The final access level is supported by the `Pwn3d!` authentication result and the Administrators group membership.
 
 ## Recommendations: upload egress, service passwords, delegation, and the agent
 
-The actions below are recommendations; none was validated in the lab.
+The observed path points to these controls, whose effectiveness was not tested in this case.
 
-1. **Upload handlers that initiate outbound connections.** The ZIP handler opened SMB to a supplied archive's target and leaked the service account's NTLMv2 challenge-response. *Recommendation:* block server-initiated SMB from web hosts, validate archive contents and outbound targets, and apply network egress filtering. *Detection:* alert on web-server processes opening SMB to non-allowlisted hosts.
+1. **Upload handlers that initiate outbound connections.** The ZIP handler opened SMB to a supplied archive's target and leaked the service account's NTLMv2 challenge-response. *Recommendation:* block server-initiated SMB from web hosts, validate archive contents and outbound targets, and apply network egress filtering. *Detection:* detect web-server processes opening SMB to non-allowlisted hosts.
 2. **Crackable service-account password.** A dictionary-foundable password made the captured challenge-response usable against the directory. *Recommendation:* move service identities to group Managed Service Accounts (gMSA) and enforce long, random passwords. *Detection:* audit service-account password strength and age on a schedule.
 3. **Permissive AD delegation.** `AddSelf` on `<IT_SUPPORT_GROUP>` plus `ForceChangePassword` over `<MONITORING_ACCOUNT>` let a low-privileged account reset a peer account's password. *Recommendation:* remove unnecessary `AddSelf` and password-reset ACEs from service accounts and groups, and review delegation periodically. *Detection:* monitor group-membership and password-reset events driven by delegated rights.
 4. **Unpatched third-party monitoring agent.** CVE-2024-0670 let the MSI repair run as SYSTEM and create a domain administrator. *Recommendation:* apply the vendor patch, or disable MSI repair for privileged installation packages. *Detection:* inventory third-party agents on domain controllers and track their versions.

@@ -208,7 +208,7 @@ Result: an authenticated user-level shell is obtained on the target.
 
 ### 8. Internal Service Discovery: WCF on Port 8000
 
-Observation: I checked the listening ports with `netstat` and found port 8000 listening internally, owned by process ID 4.
+Observation: Using `netstat`, I checked the listening ports and found port 8000 listening internally, owned by process ID 4.
 
 ```powershell
 netstat -ano | findstr LISTEN
@@ -318,15 +318,15 @@ Result: a SYSTEM-level shell is obtained on the domain controller.
 
 ## Outcome: SYSTEM command execution without a CVE
 
-The evidence establishes SYSTEM-level command execution on the domain controller and, with it, effective domain compromise, reached without exploiting a single CVE. LDAP, Kerberos, and RDP were exposed but not used in the path; every step rested on misconfiguration or missing input validation.
+The path reaches SYSTEM-level command execution on the domain controller and, with it, effective domain compromise, without exploiting a single CVE. LDAP, Kerberos, and RDP were exposed but not used in the path; every step rested on misconfiguration or missing input validation.
 
 ## Recommendations: hardcoded secrets, ADIDNS writes, linked servers, and SOAP input
 
-These actions are recommendations; none was validated in the lab.
+These actions are recommendations. No validation is documented.
 
 1. **Hardcoded credentials in a distributed binary.** `overwatch.exe` embedded a SQL connection string and sat in a guest-readable share, so anonymous access immediately yielded database credentials. *Recommendation:* keep secrets out of compiled artifacts. Use protected configuration stores, DPAPI-protected files, or managed service accounts, and require authentication on shares holding application software. *Detection:* scan build artifacts and shares for embedded secrets.
 2. **Default ADIDNS write permissions.** Any authenticated account could register the spoofed record that redirected the linked server. *Recommendation:* restrict DNS record creation with DNS-specific ACLs and review which principals can create records in AD-integrated zones. *Detection:* monitor for unexpected A-record creation, especially names matching configured linked servers.
-3. **Linked servers using SQL authentication.** The SQLNCLI linked-server connection transmitted credentials that Responder parsed as cleartext against a non-SQL endpoint. *Recommendation:* use Windows (Kerberos) authentication for linked servers, and restrict who may create them. *Detection:* alert on SQL authentication to unexpected hosts from database servers.
+3. **Linked servers using SQL authentication.** The SQLNCLI linked-server connection transmitted credentials that Responder parsed as cleartext against a non-SQL endpoint. *Recommendation:* use Windows (Kerberos) authentication for linked servers, and restrict who may create them. *Detection:* monitor SQL authentication to unexpected hosts from database servers.
 4. **Unsanitised input in a SYSTEM-level service.** The `KillProcess` operation passed `processName` to an OS shell, which yielded SYSTEM command execution. *Recommendation:* validate the parameter against a whitelist, never pass external input to a shell, and run the service under a least-privilege account instead of SYSTEM. *Detection:* monitor the service for process names containing shell metacharacters.
 
 ## References

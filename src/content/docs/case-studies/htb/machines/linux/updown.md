@@ -272,7 +272,7 @@ Result: a root shell is obtained and confirmed.
 
 ## Outcome: web shell, SUID interpreter, and easy_install root
 
-The evidence establishes a web-service shell through the `.phar` upload and delayed-cleanup race, application-user access through the SUID Python 2 `input()` helper, and root through the `NOPASSWD` `easy_install` rule. The helper's resulting shell ran in an awkward, non-interactive context, so its success is corroborated by the subsequent SSH session rather than by captured output.
+The recorded path runs from a web-service shell through the `.phar` upload and delayed-cleanup race to application-user access through the SUID Python 2 `input()` helper, then to root through the `NOPASSWD` `easy_install` rule. The helper's resulting shell ran in an awkward, non-interactive context, so its success is corroborated by the subsequent SSH session rather than by captured output.
 
 ## Recommendations: git metadata, upload blocklist, race window, SUID, and easy_install
 

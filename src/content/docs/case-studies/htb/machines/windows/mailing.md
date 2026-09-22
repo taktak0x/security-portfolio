@@ -238,16 +238,16 @@ No failed attempts, alternative approaches, or fixes are documented for this pat
 
 ## Outcome: mail credentials, WinRM user, privileged local code
 
-The evidence establishes authenticated mail access, a user credential validated through WinRM, and code execution as `<DOMAIN>\<PRIVILEGED_LOCAL_ACCOUNT>`. The embedded payload is summarized rather than reproduced.
+The recorded results show authenticated mail access, a user credential validated through WinRM, and code execution as `<DOMAIN>\<PRIVILEGED_LOCAL_ACCOUNT>`. The embedded payload is summarized rather than reproduced.
 
 ## Recommendations: traversal, config secrets, weak hashes, NTLM coercion, and the document flaw
 
-The actions below are recommendations; none was validated in the lab.
+The findings lead to the recommendations below; no follow-up validation is documented.
 
-1. **Path traversal in the download endpoint.** The `file` parameter accepted traversal sequences, letting an unauthenticated requester read `hMailServer.ini` and its administrator hash. *Recommendation:* resolve requested files against a fixed allowlist of identifiers, reject traversal sequences, and run the web service with least privilege. *Detection:* alert on encoded traversal patterns (for example `../` and `%2e%2e`) and on reads of configuration or backup files.
+1. **Path traversal in the download endpoint.** The `file` parameter accepted traversal sequences, letting an unauthenticated requester read `hMailServer.ini` and its administrator hash. *Recommendation:* resolve requested files against a fixed allowlist of identifiers, reject traversal sequences, and run the web service with least privilege. *Detection:* detect encoded traversal patterns (for example `../` and `%2e%2e`) and on reads of configuration or backup files.
 2. **Secrets stored in a readable configuration file.** `hMailServer.ini` held the administrator credential that unlocked SMTP. *Recommendation:* keep administrative secrets out of files readable by the web tier, store them in a protected secret store, and rotate the disclosed credential. *Detection:* monitor access to configuration files and audit administrative SMTP authentication.
-3. **Crackable password material.** Both the configuration hash and the coerced NetNTLMv2 response fell to an offline dictionary attack. *Recommendation:* enforce unique, high-entropy passwords for service and user accounts and disable NTLM where it is not required. *Detection:* alert on repeated authentication failures and on successful logons from unexpected sources.
-4. **Client NTLM coercion (CVE-2024-21413).** A crafted email forced an outbound SMB authentication without user interaction. *Recommendation:* patch Outlook, block outbound SMB (445) to untrusted networks, and require SMB signing. *Detection:* alert on outbound SMB connections from workstations and on NTLM authentication to external hosts.
+3. **Crackable password material.** Both the configuration hash and the coerced NetNTLMv2 response fell to an offline dictionary attack. *Recommendation:* enforce unique, high-entropy passwords for service and user accounts and disable NTLM where it is not required. *Detection:* detect repeated authentication failures and on successful logons from unexpected sources.
+4. **Client NTLM coercion (CVE-2024-21413).** A crafted email forced an outbound SMB authentication without user interaction. *Recommendation:* patch Outlook, block outbound SMB (445) to untrusted networks, and require SMB signing. *Detection:* detect outbound SMB connections from workstations and on NTLM authentication to external hosts.
 5. **Unpatched document processor (CVE-2023-2255).** LibreOffice 7.4.0.1 loaded external content from a crafted ODT without the expected prompt and executed code in a privileged user's context. *Recommendation:* patch document-processing software promptly, disable automatic external-content loading, and avoid opening untrusted documents under a privileged account. *Validation:* inventory installed document-processor versions against current advisories.
 
 ## References

@@ -164,17 +164,17 @@ No failed attempts, obstacles, or tradeoffs are documented for this path.
 
 ## Outcome: user SSH from leaked key and WPS root
 
-The evidence establishes user-level SSH access from the Wi-Fi key leaked by the anonymous OpenWrt backup, and root-level SSH access from the WPA key recovered through the WPS attack. Recorded session identity output supports both access levels. DNS stayed enumeration-only; I could not verify any exploitation path through it.
+Recorded session identity output confirms user-level SSH access from the Wi-Fi key leaked by the anonymous OpenWrt backup and root-level SSH access from the WPA key recovered through the WPS attack. DNS stayed enumeration-only; I could not verify any exploitation path through it.
 
 ## Recommendations: anonymous backups, credential reuse, raw-packet capability, and default WPS
 
-The actions below are recommendations; none was validated in the lab.
+The observed access paths inform these recommendations, which were not tested during the exercise.
 
 Each finding below pairs the observed root cause with its demonstrated impact and a prioritized action.
 
-1. **Anonymous exposure of configuration backups.** The backup stored the Wi-Fi pre-shared key in plaintext and was reachable without authentication, so a routine backup became a credential leak. *Recommendation:* require authentication for file services, keep configuration and backup archives off anonymously reachable paths, and encrypt credential-bearing backups. *Detection:* alert on anonymous logins and on transfers of backup or configuration artifacts.
+1. **Anonymous exposure of configuration backups.** The backup stored the Wi-Fi pre-shared key in plaintext and was reachable without authentication, so a routine backup became a credential leak. *Recommendation:* require authentication for file services, keep configuration and backup archives off anonymously reachable paths, and encrypt credential-bearing backups. *Detection:* alert when anonymous logins occur or backup and configuration artifacts are transferred.
 2. **Cross-service credential reuse.** The wireless pre-shared key and the WPA key each also doubled as an SSH password, for the network-administrator and root accounts respectively, so a single wireless secret became full host control. *Recommendation:* never reuse wireless keys as account passwords, and store infrastructure and account secrets separately in a managed secret store.
-3. **Raw-packet file capability.** `reaver` carried `cap_net_raw+ep`, so an unprivileged user could inject and capture 802.11 frames without SUID or root. *Recommendation:* audit file capabilities alongside SUID/SGID permissions, and restrict wireless tooling that needs raw sockets to privileged or dedicated accounts. *Detection:* alert on `cap_net_raw` and `cap_net_admin` grants to user-invokable binaries.
+3. **Raw-packet file capability.** `reaver` carried `cap_net_raw+ep`, so an unprivileged user could inject and capture 802.11 frames without SUID or root. *Recommendation:* audit file capabilities alongside SUID/SGID permissions, and restrict wireless tooling that needs raw sockets to privileged or dedicated accounts. *Detection:* alert when `cap_net_raw` or `cap_net_admin` is granted to a user-invokable binary.
 4. **WPS enabled with a default PIN.** The access point accepted its factory-default WPS PIN, which reduced WPA2 to a single known guess. *Recommendation:* disable WPS where it is not required; where it must remain, enforce a unique PIN and monitor for repeated WPS attempts.
 
 ## References

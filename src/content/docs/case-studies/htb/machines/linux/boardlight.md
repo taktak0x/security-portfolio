@@ -89,7 +89,7 @@ Result: a Dolibarr CRM instance is identified at `<APPLICATION_VHOST>`.
 
 Observation: the Dolibarr login accepts default administrative credentials.
 
-I tried the shipped default credentials, `<DEFAULT_USER>:<DEFAULT_PASSWORD>`, and the source records that they granted administrative access to the CRM interface.
+I tried the shipped default credentials, `<DEFAULT_USER>:<DEFAULT_PASSWORD>`, which the notes report as granting administrative access to the CRM interface.
 
 Significance: administrative access exposes the application's website-builder features, which form the basis of the remote code execution in the next stage.
 
@@ -203,11 +203,11 @@ Result: command execution as root is obtained through the Enlightenment setuid h
 
 ## Outcome: web service user and root via SUID
 
-The evidence establishes code execution as the web service user and root through the Enlightenment setuid helper (CVE-2022-37706). No remediation was tested in the lab; the recommendations below are proposed measures.
+The documented path reaches code execution as the web service user and root through the Enlightenment setuid helper (CVE-2022-37706). The lab did not test remediation, so the recommendations below remain proposed measures.
 
 ## Recommendations: defaults, reused database secret, and SUID helper
 
-1. **Default application credentials.** The Dolibarr instance accepted its shipped administrative login, and that access exposed the CRM and the website-builder feature used for code execution. *Recommendation:* change default credentials before deployment, enforce strong authentication, and restrict management interfaces to trusted networks. *Detection:* alert on successful logins to default or privileged accounts and on first-use default-credential patterns.
+1. **Default application credentials.** The Dolibarr instance accepted its shipped administrative login, and that access exposed the CRM and the website-builder feature used for code execution. *Recommendation:* change default credentials before deployment, enforce strong authentication, and restrict management interfaces to trusted networks. *Detection:* flag successful logins to default or privileged accounts, including first-use default-credential patterns.
 2. **Plaintext and reused database credentials.** The application configuration stored the database password in cleartext, and the same value authenticated the local `<LOCAL_USER>` account, so an application compromise became a system login. *Recommendation:* keep secrets out of readable configuration files (use environment variables or a secrets manager) and eliminate password reuse between service and human accounts. *Detection:* monitor for successful SSH logins originating from application contexts and for configuration-file reads by web service users.
 3. **Vulnerable setuid helper.** A setuid binary bundled with Enlightenment 0.23.1 (CVE-2022-37706) allowed local privilege escalation to root. *Recommendation:* patch or upgrade the window manager, audit setuid binaries, and remove helpers that are not required. *Detection:* baseline setuid binaries on disk and monitor for unexpected additions or version changes.
 

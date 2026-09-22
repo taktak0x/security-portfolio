@@ -180,14 +180,14 @@ An alternative escalation was available: `sudo /usr/bin/knife data bag create <N
 
 ## Outcome: web user code execution and root shell
 
-The evidence establishes unauthenticated code execution as the web user through the backdoored PHP 8.1.0-dev build, and root command execution through the `NOPASSWD` sudo rule on `/usr/bin/knife`. The supply-chain compromise affected only the development snapshot; official PHP releases were never affected.
+The case demonstrates unauthenticated code execution as the web user through the backdoored PHP 8.1.0-dev build and root command execution through the `NOPASSWD` sudo rule on `/usr/bin/knife`. The supply-chain compromise affected only the development snapshot; official PHP releases were never affected.
 
 ## Recommendations: dev build, NOPASSWD rules, version disclosure
 
-The actions below are recommendations; none was tested in the lab.
+The actions below remain recommendations; this case study did not test them.
 
-1. **Backdoored development build in production.** The target ran `PHP/8.1.0-dev`, a pre-release snapshot compiled from compromised source, which gave an unauthenticated attacker code execution. *Recommendation:* deploy software only from official, verified release channels and treat any pre-release build string (`-dev`, `-alpha`, `-beta`) as unfit for production. *Detection:* flag pre-release version strings in inventory and monitoring, and alert on the unexpected `User-Agentt` header.
-2. **Unrestricted `NOPASSWD` sudo rules.** Delegating `/usr/bin/knife` without a password allowed the low-privileged user to run arbitrary Ruby as root. *Recommendation:* audit every `NOPASSWD` rule against GTFOBins and scope each rule to the specific subcommands required rather than full binary execution. *Detection:* review sudoers entries and alert on interpreter-backed binaries run through `sudo`.
+1. **Backdoored development build in production.** The target ran `PHP/8.1.0-dev`, a pre-release snapshot compiled from compromised source, which gave an unauthenticated attacker code execution. *Recommendation:* deploy software only from official, verified release channels and treat any pre-release build string (`-dev`, `-alpha`, `-beta`) as unfit for production. *Detection:* flag pre-release version strings in inventory and monitoring; alert when the unexpected `User-Agentt` header appears.
+2. **Unrestricted `NOPASSWD` sudo rules.** Delegating `/usr/bin/knife` without a password allowed the low-privileged user to run arbitrary Ruby as root. *Recommendation:* audit every `NOPASSWD` rule against GTFOBins and scope each rule to the specific subcommands required rather than full binary execution. *Detection:* review sudoers entries, then alert when interpreter-backed binaries run through `sudo`.
 3. **Version disclosure in response headers.** `X-Powered-By: PHP/8.1.0-dev` disclosed the vulnerable build with no active probing. *Recommendation:* suppress version banners by setting `expose_php = Off` in `php.ini`, `Header unset X-Powered-By`, and `ServerTokens Prod` in Apache. *Detection:* periodically inspect production response headers for version leakage.
 
 ## References

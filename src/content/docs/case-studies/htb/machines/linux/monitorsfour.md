@@ -170,14 +170,14 @@ Result: the documentation records a root shell on the host with the host filesys
 
 ## Outcome: container RCE and host root
 
-The evidence establishes authenticated Cacti code execution as `www-data` inside the container and host root through a privileged container created via the unauthenticated Docker API; the exposed Docker daemon on an internal address was the critical control failure.
+The documented path reaches authenticated Cacti code execution as `www-data` inside the container and host root through a privileged container created via the unauthenticated Docker API; the exposed Docker daemon on an internal address was the critical control failure.
 
 ## Recommendations: the daemon, the token check, MD5, and the CVE
 
-No remediation was tested in the lab; the following are recommendations.
+The lab did not test remediation. The following measures are recommendations.
 
 1. **Unauthenticated Docker daemon API.** Root cause: the daemon is exposed on TCP port 2375 without TLS client authentication. Demonstrated impact: any caller that can reach the API can create a privileged container with the host filesystem mounted, which is equivalent to root on the host. *Recommendation:* use the local Unix socket or mutual TLS for remote access, and never expose the daemon without authentication. *Detection:* alert on remote Docker API access and on creation of privileged containers.
-2. **Broken API token validation.** Root cause: the endpoint accepts `token=0` as an authenticated value. Demonstrated impact: unauthenticated retrieval of password hashes. *Recommendation:* validate the caller identity server-side and reject trivially bypassed token values, then rotate any exposed secrets. *Detection:* alert on unauthenticated API responses that contain credential fields.
+2. **Broken API token validation.** Root cause: the endpoint accepts `token=0` as an authenticated value. Demonstrated impact: unauthenticated retrieval of password hashes. *Recommendation:* validate the caller identity server-side and reject trivially bypassed token values, then rotate any exposed secrets. *Detection:* flag unauthenticated responses that contain credential fields.
 3. **MD5 password storage and reuse.** Root cause: passwords are stored as raw MD5 and one password is reused between the API account and the application login. Demonstrated impact: fast offline cracking and credential reuse within the same application. *Recommendation:* store passwords with a salted adaptive hash and enforce unique credentials. *Detection:* monitor for password reuse across accounts.
 4. **Cacti authenticated RCE (CVE-2025-24367).** Root cause: an authenticated user can create arbitrary PHP in the web root, fixed in Cacti 1.2.29. Demonstrated impact: code execution inside the container as the web service account. *Recommendation:* upgrade to the patched release and restrict access to the Cacti interface to a management network.
 

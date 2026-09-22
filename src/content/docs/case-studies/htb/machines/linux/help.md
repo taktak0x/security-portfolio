@@ -194,13 +194,13 @@ Result: root execution is confirmed by `whoami`.
 
 ## Outcome: web-service command execution and kernel eBPF root
 
-The evidence establishes command execution as `<WEB_SERVICE_ACCOUNT>` through an attachment uploaded to HelpDeskZ 1.0.2, and root through CVE-2017-16995 as confirmed by `whoami`. Limitations: the GraphQL credential pair is recovered but is not shown authenticating to HelpDeskZ.
+The `id` output confirms command execution as `<WEB_SERVICE_ACCOUNT>` through an attachment uploaded to HelpDeskZ 1.0.2. A separate `whoami` output confirms root through CVE-2017-16995. Limitations: the GraphQL credential pair is recovered but is not shown authenticating to HelpDeskZ.
 
 ## Recommendations: GraphQL exposure, outdated app, upload validation, kernel patching
 
-The actions are recommendations; none was validated in the lab.
+The source does not record validation of these recommendations.
 
-1. **Unauthenticated GraphQL data exposure.** A public query returned credential material. *Recommendation:* disable introspection and unauthenticated query access to internal services, and never expose credential fields over GraphQL. *Detection:* alert on unauthenticated GraphQL requests that select sensitive fields.
+1. **Unauthenticated GraphQL data exposure.** A public query returned credential material. *Recommendation:* disable introspection and unauthenticated query access to internal services, and never expose credential fields over GraphQL. *Detection:* flag unauthenticated GraphQL requests that select sensitive fields.
 2. **Outdated HelpDeskZ 1.0.2.** The 2015 release carries known upload-handling and SQL injection weaknesses. *Recommendation:* upgrade to a supported version or replace the application with maintained software. *Detection:* inventory deployed application versions and flag end-of-life releases.
 3. **Server-side upload validation and predictable names.** A rejected PHP file was stored under a derivable hash and stayed reachable. *Recommendation:* enforce server-side type validation, store uploads outside the web root, and randomize stored names. *Detection:* monitor upload directories for executable file types and direct requests to them.
 4. **Unpatched kernel.** The Ubuntu 16.04 kernel's eBPF verifier flaw allowed local root escalation. *Recommendation:* apply kernel security updates promptly and track hosts against known privilege-escalation CVEs. *Detection:* compare host kernel versions against vendor advisories for exploitable local bugs.

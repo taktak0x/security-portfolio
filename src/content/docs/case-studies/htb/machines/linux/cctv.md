@@ -210,14 +210,14 @@ Result: the unvalidated filename configuration yields root-level command executi
 
 ## Outcome: SSH user and root via a filename field
 
-The evidence establishes root-level command execution on the target through a configuration field that is validated only in the browser. Limitation: the injected payload is shown as a placeholder pattern rather than a literal.
+The source records root-level command execution on the target through a configuration field that is validated only in the browser. Limitation: the injected payload is shown as a placeholder pattern rather than a literal.
 
 ## Recommendations: blind SQLi, client-side validation, and a root daemon
 
-The actions are recommendations; none was validated in the lab.
+I did not validate these recommendations during the exercise.
 
 1. **Blind SQL injection in a request parameter.** The `tid` parameter of `/zm/index.php` reached a SQL query without adequate handling, so the `Users` table and its bcrypt hashes could be dumped. *Recommendation:* update ZoneMinder past the fixed release and use prepared statements or parameterized queries for every database-backed request parameter. *Detection:* monitor for slow, repetitive requests to a single endpoint consistent with time-based extraction.
-2. **Client-side-only input validation.** The Image File Name field was validated only in browser JavaScript, so the value reached the server unchanged and was written into motion's configuration. *Recommendation:* validate all configuration input on the server and reject shell metacharacters before a value is written to configuration. *Detection:* alert on configuration changes whose values contain shell metacharacters.
+2. **Client-side-only input validation.** The Image File Name field was validated only in browser JavaScript, so the value reached the server unchanged and was written into motion's configuration. *Recommendation:* validate all configuration input on the server and reject shell metacharacters before a value is written to configuration. *Detection:* flag configuration changes whose values contain shell metacharacters.
 3. **Privileged surveillance daemon.** motionEye and motion ran as root, so a filename-handling flaw produced root code execution instead of access limited to a service account. *Recommendation:* run the camera services under a dedicated least-privilege `motioneye` account that holds only the device access it needs, such as membership in the `video` group. *Detection:* audit long-running services for unnecessary root execution.
 
 ## References

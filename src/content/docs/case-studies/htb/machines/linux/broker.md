@@ -166,7 +166,7 @@ Result: root command execution is confirmed by the `whoami` output.
 
 ## Outcome: service account and root by nginx sudo
 
-The evidence establishes unauthenticated code execution as the ActiveMQ service account through CVE-2023-46604, and root command execution through a passwordless nginx sudo rule abused to write an SSH key into root's `authorized_keys`. The management console's default credentials were a separate exposure and were not required for exploitation.
+The documented path starts with unauthenticated code execution as the ActiveMQ service account through CVE-2023-46604 and reaches root command execution through a passwordless nginx sudo rule abused to write an SSH key into root's `authorized_keys`. The management console's default credentials were a separate exposure and were not required for exploitation.
 
 ## Recommendations: OpenWire, console defaults, sudo, and WebDAV
 
@@ -174,7 +174,7 @@ The actions below are recommendations; they were not tested in the lab.
 
 1. **Unauthenticated vulnerable OpenWire transport.** CVE-2023-46604 is an unauthenticated code-execution flaw in the OpenWire marshaller, and it is reachable whenever port 61616 is exposed; exploitation yielded service-account code execution. *Recommendation:* upgrade or patch ActiveMQ and restrict 61616 to trusted networks, disabling OpenWire where it is not required. *Detection:* monitor the broker for unexpected class instantiation and unusual outbound connections initiated from the service account.
 2. **Default management console credentials.** The console accepted default credentials, granting authenticated management access independent of the exploit path. *Recommendation:* change default credentials and restrict the management interface to trusted administration networks.
-3. **Passwordless sudo for a daemon binary.** A `(ALL : ALL) NOPASSWD: /usr/sbin/nginx` rule let the service account start the daemon as root, and configuration control turned that into broad privileged execution. *Recommendation:* remove sudo rules for general-purpose daemon binaries and use tightly scoped wrappers where privileged operations are necessary. *Detection:* alert on sudo rule changes and on nginx invoked with a non-standard configuration path.
+3. **Passwordless sudo for a daemon binary.** A `(ALL : ALL) NOPASSWD: /usr/sbin/nginx` rule let the service account start the daemon as root, and configuration control turned that into broad privileged execution. *Recommendation:* remove sudo rules for general-purpose daemon binaries and use tightly scoped wrappers where privileged operations are necessary. *Detection:* monitor sudo rule changes and nginx invocations that use a non-standard configuration path.
 4. **Root-owned workers with WebDAV enabled.** Running workers as root and permitting HTTP PUT produced a root file-write primitive, which was used to place an SSH key for root. *Recommendation:* run workers as an unprivileged user, avoid enabling WebDAV and directory indexing, and restrict write methods. *Detection:* monitor writes to sensitive paths such as `authorized_keys`.
 
 ## References

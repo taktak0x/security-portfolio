@@ -267,15 +267,15 @@ Result: certificate authentication returns `<ADMIN_ACCOUNT>` material, and WinRM
 
 ## Outcome: ESC9 certificate and administrative execution
 
-The evidence establishes administrative execution on the domain controller as `<DOMAIN>\<ADMIN_ACCOUNT>`, obtained from a certificate issued through the vulnerable template rather than from the administrator password.
+The certificate issued through the vulnerable template provides administrative execution on the domain controller as `<DOMAIN>\<ADMIN_ACCOUNT>`, rather than through the administrator password.
 
 ## Recommendations: ownership, GenericWrite, GenericAll, and the ESC9 template
 
-None of the recommendations below was validated in the lab.
+The recommendations below were not validated according to the source.
 
-1. **Excessive ownership and DACL delegation on privileged groups.** `<LAB_USER>` held `WriteOwner` over `Management`, so the account could take ownership and rewrite the group DACL. *Recommendation:* reduce `WriteOwner`/`WriteMembers` delegation on privileged groups and alert on owner and DACL changes.
+1. **Excessive ownership and DACL delegation on privileged groups.** `<LAB_USER>` held `WriteOwner` over `Management`, so the account could take ownership and rewrite the group DACL. *Recommendation:* reduce `WriteOwner`/`WriteMembers` delegation on privileged groups and monitor owner and DACL changes.
 2. **`GenericWrite` over a service account.** `Management` had `GenericWrite` over `<SERVICE_ACCOUNT>`, which a key credential turned into Kerberos authentication material and the account NT hash. *Recommendation:* restrict `GenericWrite` on service accounts and monitor key-credential (`msDS-KeyCredentialLink`) writes for unexpected entries.
-3. **`GenericAll` over the certificate-operator account.** `<SERVICE_ACCOUNT>` had `GenericAll` over `<CA_OPERATOR>`, which allowed an unauthorized password reset. *Recommendation:* apply least privilege to CA operator and service-account permissions and alert on privileged password resets.
+3. **`GenericAll` over the certificate-operator account.** `<SERVICE_ACCOUNT>` had `GenericAll` over `<CA_OPERATOR>`, which allowed an unauthorized password reset. *Recommendation:* apply least privilege to CA operator and service-account permissions and monitor privileged password resets.
 4. **ESC9-vulnerable template with a mutable UPN.** `<VULNERABLE_TEMPLATE>` lacked the certificate security extension, and the enrolling account's UPN could be changed, so a certificate authenticated as `<ADMIN_ACCOUNT>`. *Recommendation:* configure templates with the security extension, enforce strong certificate binding, and audit UPN changes and certificate issuance for accounts that can enroll.
 
 ## References

@@ -38,20 +38,20 @@ outcome: "Domain administrator access via domain controller TGT capture, DCSync,
 
 ## From a logon script to unconstrained delegation
 
-Delegate is a Medium-rated Hack The Box Windows Active Directory lab. A guest-readable NETLOGON logon script exposes a reusable credential, directory analysis shows the recovered user holds `GenericWrite` over a second account, and that account's delegation-group membership supports an unconstrained-delegation attack that coerces the domain controller into revealing its TGT and finishes with DCSync. Target identifiers, credentials, and secret values are replaced with role-based placeholders; command syntax is preserved. See [how evidence is handled](/method/).
+Delegate is a Medium-rated Hack The Box Windows Active Directory lab. Its path starts with a guest-readable script and ends with a pass-the-hash administrator session. Between those points, the recovered account can modify a delegation user's SPN, the cracked password provides WinRM access, and group membership permits a machine account to receive unconstrained delegation. PetitPotam and DNS/SPN changes expose the domain controller TGT used for DCSync. Target identifiers, credentials, and secret values are replaced with role-based placeholders; command syntax is preserved. See [how evidence is handled](/method/).
 
 **Attack path:** **Guest-readable NETLOGON script → cleartext credential → `GenericWrite` → SPN Kerberoasting → delegation-admin machine account with unconstrained delegation → DNS spoof + PetitPotam coercion → DC TGT capture → DCSync → pass-the-hash domain administrator**
 
 ## Domain controller, guest SMB, and the escalation objective
 
-- **Target:** a Windows Active Directory domain (`<DOMAIN>`) whose domain controller (`<DOMAIN_CONTROLLER_FQDN>`) hosts the domain services.
-- **Starting position:** unauthenticated network access; guest SMB login is accepted and exposes domain-readable shares.
-- **Objective:** move from a readable logon script to domain administrator control by following the directory's authorization edges and delegation configuration.
-- **Constraints:** activity was confined to the Hack The Box lab environment.
+- **Target:** a Windows Active Directory domain (`<DOMAIN>`) centered on its domain controller (`<DOMAIN_CONTROLLER_FQDN>`).
+- **Starting position:** network access without credentials; guest SMB access exposed shares readable by the domain.
+- **Objective:** follow the authorization and delegation relationships from the script to domain administrator control.
+- **Constraints:** the work remained inside the Hack The Box lab environment.
 
 ## Evidence: logon script to DCSync
 
-The source captures little raw tool output; apart from the logon-script and recovered-password excerpts, the remaining stages are recorded as narrative results.
+Raw output is sparse. The logon-script and recovered-password excerpts are present, while the other stages appear as narrative results.
 
 ### 1. Credential Discovery in the NETLOGON Share
 
@@ -172,22 +172,22 @@ Result: an administrative pass-the-hash session establishes domain administrator
 
 ## Challenges and Decisions
 
-No failed attempts, blockers, or mid-chain corrections are documented for this chain; each stage completed and supplied the input for the next.
+The notes describe every stage as advancing to the next. They contain no failed attempts, blockers, or mid-chain corrections.
 
 ## Outcome: domain administrator via DCSync and pass-the-hash
 
-The evidence establishes domain administrator access on the target domain controller.
+The source notes record that the final pass-the-hash session established domain administrator access on the target domain controller. No session output was captured for this step, so I could not verify it against a transcript.
 
-Limitation: apart from the logon-script and recovered-password excerpts, the source records each stage as a narrative result rather than captured tool output, so I could not verify the intermediate stages against raw transcripts.
+The source contains raw excerpts for the logon script and recovered password only. Intermediate stages are narrative results, so I could not verify them against tool transcripts.
 
 ## Recommendations: script credentials, GenericWrite, delegation, and coercion
 
-The actions below are recommendations; none was validated in the lab.
+These recommendations follow from the chain. The lab did not validate any of them.
 
-1. **Cleartext credentials in a NETLOGON logon script.** A domain-readable script stored a reusable password. *Impact:* an unauthenticated guest recovered a working domain credential. *Recommendation:* remove credentials from logon scripts and use managed identities or a credential vault; restrict who can write to NETLOGON. *Detection:* alert on guest or anonymous SMB reads of NETLOGON and on credential-shaped strings in script files.
-2. **Over-permissive object control (`GenericWrite`).** A standard user held write rights over another user object. *Impact:* an arbitrary SPN could be written, enabling Kerberoasting of the target account. *Recommendation:* audit and remove non-essential write ACLs on user objects and enforce least privilege. *Detection:* alert on `servicePrincipalName` writes to user objects by non-administrative principals.
-3. **Unconstrained delegation.** Accounts or machine accounts trusted for delegation accumulated reusable tickets. *Impact:* once coercion forced the domain controller to authenticate to the relay, its TGT was captured. *Recommendation:* eliminate unconstrained delegation and replace it with constrained or resource-based constrained delegation scoped to specific services.
-4. **Authentication-coercion exposure (PetitPotam).** The domain controller could be coerced into authenticating to an attacker-chosen host. *Impact:* the forced authentication delivered the domain controller's TGT to the relay. *Recommendation:* apply current vendor hardening for authentication-coercion techniques, require SMB signing and Extended Protection for Authentication, and disable unnecessary remote interface access.
+1. **Cleartext credentials in a NETLOGON logon script.** Guest access to a domain-readable script exposed a reusable password. *Impact:* the password led to a working domain credential. *Recommendation:* remove credentials from scripts, use managed identities or a credential vault, and limit NETLOGON write access. *Detection:* monitor guest or anonymous reads of NETLOGON and scan script content for credential-shaped strings.
+2. **Over-permissive object control (`GenericWrite`).** Write access on the delegation user allowed an SPN to be added. *Impact:* the account could then be Kerberoasted. *Recommendation:* review user-object ACLs, remove permissions without an operational need, and enforce least privilege. *Detection:* monitor `servicePrincipalName` changes made by non-administrative principals.
+3. **Unconstrained delegation.** A trusted account retained tickets presented to the relay, including the domain controller's TGT after coercion. *Impact:* the relay received reusable domain controller authentication material. *Recommendation:* remove unconstrained delegation and scope replacement delegation to specific services with constrained or resource-based constrained delegation.
+4. **Authentication-coercion exposure (PetitPotam).** The domain controller could be made to authenticate to an attacker-selected host. *Impact:* that authentication passed its TGT to the relay. *Recommendation:* apply current vendor hardening for coercion techniques, require SMB signing and Extended Protection for Authentication, and disable unnecessary remote interface access.
 
 ## References
 

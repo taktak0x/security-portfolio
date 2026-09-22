@@ -222,11 +222,11 @@ Result: root command execution is confirmed by the root shell.
 
 ## Outcome: root via the below log symlink
 
-The evidence establishes root command execution on the host. Access rested on an unpatched Roundcube instance, application secrets readable by the web service user, and a privileged logging utility that resolved its log path through user-writable storage. HTTP and SSH were the only exposed services.
+Root command execution on the host is confirmed. Access rested on an unpatched Roundcube instance, application secrets readable by the web service user, and a privileged logging utility that resolved its log path through user-writable storage. HTTP and SSH were the only exposed services.
 
 ## Recommendations: Roundcube, plaintext config, session secrets, and below
 
-The actions are recommendations; none was validated in the lab.
+I did not validate these recommendations during the lab work.
 
 1. **Unpatched Roundcube (CVE-2025-49113).** An authenticated user could reach code execution through the upload action's unvalidated `_from` parameter. *Recommendation:* upgrade to a fixed release (1.5.10 or 1.6.11) and restrict access to the webmail application. *Detection:* monitor for object-deserialization patterns and unexpected `_from` values in requests to `program/actions/settings/upload.php`.
 2. **Plaintext database credentials in application configuration.** The MySQL password was stored in `config.inc.php`, readable by the web application user. *Recommendation:* store configuration outside the web root under restrictive ownership and permissions, and scope database accounts to least privilege. *Detection:* scan configuration files and backups for embedded secrets.

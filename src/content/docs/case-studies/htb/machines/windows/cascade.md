@@ -227,11 +227,11 @@ Result: the recovered password authenticates as the domain Administrator.
 
 ## Outcome: administrative access from retained object data
 
-The evidence establishes authenticated low-privileged domain access and then administrative access to the domain controller, confirmed by SMB authentication returning an administrative marker. Every credential in the chain came from data readable by a lower-privileged account or retained on a deleted object, and the final escalation depended on password reuse between the deleted temporary administrator and the current domain Administrator. Flag values are omitted.
+SMB authentication returning an administrative marker confirms the transition from authenticated low-privileged domain access to administrative access on the domain controller. Every credential in the chain came from data readable by a lower-privileged account or retained on a deleted object, and the final escalation depended on password reuse between the deleted temporary administrator and the current domain Administrator. Flag values are omitted.
 
 ## Recommendations: anonymous LDAP, custom attributes, VNC, keys, and deleted objects
 
-None of the actions below was tested in the lab; they are recommendations derived from the observed weaknesses.
+The actions below are recommendations derived from the observed weaknesses; this case study did not test them.
 
 1. **Anonymous LDAP disclosure.** Pre-Windows 2000 compatible access left directory objects readable without authentication, exposing a credential-bearing attribute. *Recommendation:* remove `Anonymous`/`Everyone` from the Pre-Windows 2000 Compatible Access group and require authentication for directory reads. *Validation:* an anonymous `ldapsearch` should return only `rootDSE` data.
 2. **Secrets in custom directory attributes.** A reusable password was stored in a custom attribute as Base64. *Recommendation:* never store credentials in directory schema extensions; inventory custom attributes and restrict their ACLs.

@@ -149,7 +149,7 @@ netexec smb <TARGET_IP> -u '<LAB_USER>' -p '<LAB_USER_PASSWORD>' -k
 
 Significance: storing crackable password hashes in an application database turns a read of that database into reusable domain credentials.
 
-Result: a salted hash for `<LAB_USER>` is recovered and cracked offline to a cleartext password, which the source records as validated against the domain controller over SMB.
+Result: a salted hash for `<LAB_USER>` is recovered and cracked offline to a cleartext password. The notes describe it as validated against the domain controller over SMB.
 
 ### 5. Kerberos-Backed SSH Access
 
@@ -241,7 +241,7 @@ whoami /all
 
 Significance: Group Policy Creator Owners can create and link Group Policy Objects in the domain, so its members can influence domain-wide policy: a documented route to Domain Administrator when delegation is not tightly controlled.
 
-Result: `<WAPT_USER>` is confirmed as a member of Group Policy Creator Owners; the source records a path toward Domain Administrator but captures no output confirming that final privilege.
+Result: `<WAPT_USER>` is confirmed as a member of Group Policy Creator Owners. The documented path leads toward Domain Administrator, but no output confirms that final privilege.
 
 ## Challenges and Decisions
 
@@ -255,10 +255,10 @@ Limitations: the source retains no output for the offline password recovery, the
 
 ## Recommendations: patching, config secrets, hashes, Recycle Bin, and group membership
 
-The actions are recommendations; none was validated in the lab.
+These remain recommendations only; no validation is documented.
 
-1. **Unpatched Gibbon LMS release.** Gibbon v25.0.00 was reachable and affected by CVE-2023-45878, giving remote code execution on the domain controller. *Recommendation:* track and apply upstream releases promptly, and restrict where the application is exposed. *Detection:* inventory application versions and alert on unexpected script execution by the web service account.
-2. **Plaintext database credentials in application configuration.** `config.php` stored MySQL credentials in cleartext, reachable from the web shell. *Recommendation:* move secrets out of application files into a managed secret store or environment configuration, and restrict file permissions on configuration paths. *Detection:* scan web roots for credential-shaped strings and alert on database authentication from unexpected contexts.
+1. **Unpatched Gibbon LMS release.** Gibbon v25.0.00 was reachable and affected by CVE-2023-45878, giving remote code execution on the domain controller. *Recommendation:* track and apply upstream releases promptly, and restrict where the application is exposed. *Detection:* inventory application versions and detect unexpected script execution by the web service account.
+2. **Plaintext database credentials in application configuration.** `config.php` stored MySQL credentials in cleartext, reachable from the web shell. *Recommendation:* move secrets out of application files into a managed secret store or environment configuration, and restrict file permissions on configuration paths. *Detection:* scan web roots for credential-shaped strings and monitor database authentication from unexpected contexts.
 3. **Crackable password hashes in the application database.** The `gibbonperson` table stored salted hashes that were recoverable offline. *Recommendation:* store credentials with adaptive functions such as Argon2id or bcrypt, enforce a strong password policy, and rotate any password exposed by the database. *Validation:* review stored hash formats and confirm they use a modern algorithm.
 4. **Credential material retained in the Recycle Bin.** A deleted WAPT backup still contained an encoded credential, which was recovered and validated. *Recommendation:* securely dispose of backups, encrypt and access-restrict retained backup material, and keep retention windows short. *Detection:* monitor backup repositories and Recycle Bin paths for secret-bearing artifacts.
 5. **Over-broad privileged group membership.** `<WAPT_USER>` was a member of Group Policy Creator Owners, a group able to create and link Group Policy Objects. *Recommendation:* audit and minimize membership of Group Policy Creator Owners and other sensitive groups, and monitor GPO creation and linking. *Validation:* periodically review privileged group membership against a least-privilege baseline.

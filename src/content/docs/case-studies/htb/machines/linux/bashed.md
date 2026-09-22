@@ -219,13 +219,13 @@ Result: the callback returns as root, confirmed by `whoami`.
 
 ## Outcome: www-data to root via a scheduled script
 
-The evidence establishes a root context after overwriting a script that root executes on a schedule. One limit remains: the scheduler configuration itself is not captured, so root execution is inferred from the script/output ownership mismatch and the repeatedly rewritten root-owned output.
+The source records a root context after overwriting a script that root executes on a schedule. One limit remains: the scheduler configuration itself is not captured, so root execution is inferred from the script/output ownership mismatch and the repeatedly rewritten root-owned output.
 
 ## Recommendations: web shell, sudo delegation, and writable script
 
-Each finding pairs the observed root cause with its demonstrated impact and a prioritized action. These actions are recommendations; none was validated in the lab.
+The following actions are recommendations. No validation is documented.
 
-1. **Development shell left in the web root.** `phpbash.php` was reachable without authentication and gave code execution as `www-data`. *Recommendation:* remove administrative and diagnostic tooling from web-accessible directories and deploy only required application files. *Detection:* alert on shell-like files and on requests that execute them.
+1. **Development shell left in the web root.** `phpbash.php` was reachable without authentication and gave code execution as `www-data`. *Recommendation:* remove administrative and diagnostic tooling from web-accessible directories and deploy only required application files. *Detection:* scan for shell-like files and flag requests that execute them.
 2. **Overly permissive sudo delegation.** A `NOPASSWD: ALL` rule let the web-service account run arbitrary commands as `scriptmanager`. *Recommendation:* scope `sudoers` to specific binaries and arguments instead of unrestricted command execution as another account. *Detection:* review `sudo -l` output and audit `sudoers` for blanket `NOPASSWD: ALL` grants.
 3. **Root-executed script writable by a lower-privileged account.** `scriptmanager` could overwrite `test.py`, which root ran on a schedule; the overwrite yielded root code execution. *Recommendation:* keep privileged scheduled scripts and their directories writable only by root, and run non-root schedulers without privilege. *Detection:* monitor scheduled-task scripts and directories for unexpected content changes.
 

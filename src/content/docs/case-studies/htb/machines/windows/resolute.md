@@ -221,16 +221,16 @@ Result: the callback returns and `whoami` confirms `nt authority\system`, establ
 
 ## Outcome: WinRM user and SYSTEM via DNS plugin
 
-The evidence establishes authenticated WinRM access as `<USER_2>`, an administrative credential for `<USER_3>` recovered from a PowerShell transcript and then validated through SMB, and SYSTEM-level command execution on the domain controller via a DNS service plugin DLL. Limitation: credential, host, and transfer values are redacted, so the recovered secrets are not reproducible from this writeup.
+The recorded path reaches authenticated WinRM access as `<USER_2>`, an administrative credential for `<USER_3>` recovered from a PowerShell transcript and then validated through SMB, and SYSTEM-level command execution on the domain controller via a DNS service plugin DLL. Limitation: credential, host, and transfer values are redacted, so the recovered secrets are not reproducible from this writeup.
 
 ## Recommendations: LDAP attributes, default rotation, transcripts, and DNSAdmins
 
-The actions below are recommendations; none was validated in the lab.
+The evidence supports the controls below; this exercise did not verify their operation.
 
-1. **Credentials documented in LDAP attributes.** The `description` attribute exposed `<PROVISION_ACCOUNT>`'s initial password to unauthenticated enumeration. *Recommendation:* never store credentials in `description`/`info` attributes, deliver initial credentials out-of-band, and force a change at first logon. *Detection:* scan directory attributes for credential-shaped strings and alert on anonymous LDAP enumeration.
-2. **Onboarding default not rotated.** `<USER_2>` retained the shared provisioning password, so one spray attempt produced an authenticated foothold. *Recommendation:* enforce mandatory first-logon rotation, verify completion, and disallow shared defaults. *Detection:* alert on repeated authentication attempts using the same password across many accounts.
+1. **Credentials documented in LDAP attributes.** The `description` attribute exposed `<PROVISION_ACCOUNT>`'s initial password to unauthenticated enumeration. *Recommendation:* never store credentials in `description`/`info` attributes, deliver initial credentials out-of-band, and force a change at first logon. *Detection:* scan directory attributes for credential-shaped strings and flag anonymous LDAP enumeration.
+2. **Onboarding default not rotated.** `<USER_2>` retained the shared provisioning password, so one spray attempt produced an authenticated foothold. *Recommendation:* enforce mandatory first-logon rotation, verify completion, and disallow shared defaults. *Detection:* monitor repeated authentication attempts using the same password across many accounts.
 3. **PowerShell transcription capturing cleartext secrets.** An interactive transcript logged a `net use` command with `<USER_3>`'s password as an argument. *Recommendation:* avoid passing secrets on command lines (use `Get-Credential`/credential objects), keep transcript storage write-only for users and readable only by central logging, and prefer `ScriptBlock` logging. *Detection:* mine the transcript store for credential patterns and monitor access to `C:\PSTranscripts`.
-4. **Over-privileged DNSAdmins group.** `DNSAdmins` membership allowed a server-level plugin DLL to be loaded and executed by the SYSTEM-run DNS service. *Recommendation:* treat `DNSAdmins` as a tier-zero group, limit it to dedicated DNS administration accounts, and monitor the `ServerLevelPluginDll` registry value under `HKLM\SYSTEM\CurrentControlSet\Services\DNS\Parameters`. *Detection:* alert on changes to that registry value and on DNS service restarts following a plugin-path change.
+4. **Over-privileged DNSAdmins group.** `DNSAdmins` membership allowed a server-level plugin DLL to be loaded and executed by the SYSTEM-run DNS service. *Recommendation:* treat `DNSAdmins` as a tier-zero group, limit it to dedicated DNS administration accounts, and monitor the `ServerLevelPluginDll` registry value under `HKLM\SYSTEM\CurrentControlSet\Services\DNS\Parameters`. *Detection:* monitor changes to that registry value and on DNS service restarts following a plugin-path change.
 
 ## References
 

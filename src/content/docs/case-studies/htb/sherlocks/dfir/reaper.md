@@ -178,15 +178,15 @@ The two artifacts use different time scopes: capture offsets are relative to the
 
 ## Outcome: a confirmed relay session
 
-The evidence establishes an NTLM relay compromise. The provided assessment classifies the activity as an NTLM relay and treats it as high severity, on the basis that a domain account was relayed toward a domain-controller-adjacent share. Limitations: the evidence supports one relay session and recorded share touches. I saw no interception affecting other victims and no persistence on the relay device, and I could not verify file reads or writes on the navigated share.
+The capture and event log confirm an NTLM relay compromise. The provided assessment classifies the activity as an NTLM relay and treats it as high severity, on the basis that a domain account was relayed toward a domain-controller-adjacent share. Limitations: the evidence supports one relay session and recorded share touches. I saw no interception affecting other victims and no persistence on the relay device, and I could not verify file reads or writes on the navigated share.
 
 ## Recommendations: SMB signing, mismatch hunting, session correlation, and response
 
-The actions below are recommendations; none was validated in the lab.
+The findings support the following controls; this case study does not record a validation of them.
 
-1. **NTLM relay exposure.** NTLM authentication was relayable, and the relayed credential was accepted as a network logon and then used for SMB share access. *Recommendation:* require SMB signing, and disable NBT-NS/LLMNR where operationally feasible. *Detection:* alert on Security 4624 `LogonType 3` logons authenticated with NTLM where the claimed workstation and source address disagree or the source is not a known workstation. This maps to MITRE ATT&CK T1557.001, Name Resolution Poisoning and SMB Relay.
+1. **NTLM relay exposure.** NTLM authentication was relayable, and the relayed credential was accepted as a network logon and then used for SMB share access. *Recommendation:* require SMB signing, and disable NBT-NS/LLMNR where operationally feasible. *Detection:* flag Security 4624 `LogonType 3` logons authenticated with NTLM when the claimed workstation and source address disagree or the source is not a known workstation. This maps to MITRE ATT&CK T1557.001, Name Resolution Poisoning and SMB Relay.
 2. **Workstation/address mismatch as a host-side signal.** The logon claimed `<WORKSTATION_B>` while originating from `<RELAY_SOURCE_IP>`. *Detection:* hunt Security 4624 `LogonType 3` events with NTLM authentication and the `NtLmSsp` logon process from non-workstation addresses across domain controllers.
-3. **Session correlation for share access.** The share-access record shared a logon ID and source port with the suspicious logon. *Detection:* correlate Security 5140 share access, including the authentication-process share, with the same `SubjectLogonId` and source port as a suspicious 4624 event.
+3. **Session correlation for share access.** The share-access record shared a logon ID and source port with the suspicious logon. *Detection:* join Security 5140 share access, including the authentication-process share, to a suspicious 4624 event using `SubjectLogonId` and source port.
 4. **Response readiness.** *Recommendation:* isolate the relay source, reset the affected account's credentials, revoke its sessions, review the domain-controller share's access and audit logs for the session window, and preserve the capture and event log for further analysis.
 
 ## References

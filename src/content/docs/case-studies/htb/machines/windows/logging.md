@@ -294,16 +294,16 @@ Result: the account is now a local administrator, and its refreshed session yiel
 
 ## Outcome: local Administrators and privileged WinRM
 
-The evidence establishes a path from the provided domain credential to administrative access on the domain controller. Tool output shows the recovered credentials and hashes, an authenticated `whoami` proves the DLL hijack, and the local-Administrators listing proves the privilege change. The demonstrated privilege is local-Administrator membership on the domain controller, exercised through privileged WinRM.
+The path runs from the provided domain credential to administrative access on the domain controller. Tool output shows the recovered credentials and hashes, an authenticated `whoami` proves the DLL hijack, and the local-Administrators listing proves the privilege change. The demonstrated privilege is local-Administrator membership on the domain controller, exercised through privileged WinRM.
 
 ## Recommendations: log secrets, MSA ACLs, AD CS templates, DNS records, DLL loading, and WSUS trust
 
-The actions below are recommendations; no remediation was tested in the lab.
+The actions below remain recommendations; this case study did not test remediation.
 
-1. **Plaintext credentials in diagnostic logs.** A synchronization trace log recorded a plaintext bind password in a share readable by the low-privileged account, and its predictable year rotation yielded service-account access. *Recommendation:* strip secrets from diagnostic logs, remove diagnostic shares from general read access, and alert on credentials appearing in log content.
-2. **Weak ACLs on managed service accounts.** `<SERVICE_ACCOUNT>` could write `<MANAGED_SERVICE_ACCOUNT>`'s `msDS-KeyCredentialLink`, so Shadow Credentials produced a TGT and the account's NT hash. *Recommendation:* audit and tier ACLs on managed service accounts, and *detection:* alert on unexpected key-credential writes.
+1. **Plaintext credentials in diagnostic logs.** A synchronization trace log recorded a plaintext bind password in a share readable by the low-privileged account, and its predictable year rotation yielded service-account access. *Recommendation:* strip secrets from diagnostic logs, remove diagnostic shares from general read access, and monitor credentials appearing in log content.
+2. **Weak ACLs on managed service accounts.** `<SERVICE_ACCOUNT>` could write `<MANAGED_SERVICE_ACCOUNT>`'s `msDS-KeyCredentialLink`, so Shadow Credentials produced a TGT and the account's NT hash. *Recommendation:* audit and tier ACLs on managed service accounts, and *detection:* monitor unexpected key-credential writes.
 3. **AD CS template allowing subject-name injection with Server Authentication EKU.** Enrollee-controlled subject names plus the server-auth EKU let a rogue endpoint present a trusted certificate for the update-service hostname. *Recommendation:* restrict enrollment and manager approval, and remove EKUs a template does not require.
-4. **Unrestricted AD-integrated DNS record creation.** The managed account could create a record for a trusted hostname, redirecting the update endpoint to an operator address. *Detection:* alert on new or changed records for update and infrastructure names.
+4. **Unrestricted AD-integrated DNS record creation.** The managed account could create a record for a trusted hostname, redirecting the update endpoint to an operator address. *Detection:* monitor new or changed records for update and infrastructure names.
 5. **DLL search-order hijack in a scheduled update task.** The task loaded `settings_update.dll` by name from a writable path, so a matching-architecture DLL executed as the task user. *Recommendation:* load dependencies by fully qualified path from safe search directories and verify the applier binary.
 6. **WSUS client trust without endpoint pinning.** The client accepted any server presenting a certificate valid for the hostname, so a rogue WSUS server delivered a signed binary that ran as SYSTEM. *Recommendation:* require mutual TLS or certificate pinning for update endpoints and inventory trusted roots.
 
