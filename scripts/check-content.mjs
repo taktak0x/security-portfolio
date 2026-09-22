@@ -5,7 +5,7 @@
 // question is whether a page would still make sense after swapping out its
 // technical nouns. It reads the source markdown directly (no build required)
 // and uses only Node built-ins. The report is informational: exit code is 0
-// by default. `--strict` turns the headline similarity and boilerplate
+// by default. `--strict` turns the maximum similarity and boilerplate
 // thresholds into a non-zero exit.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
@@ -92,6 +92,22 @@ function shingles(tokens, size) {
 	return set;
 }
 
+/** Precompute 3-6 word windows overlapping exact excluded phrases. */
+function overlappingPhraseWindows(tokens, phrases) {
+	const excluded = new Set();
+	for (const phrase of phrases) {
+		for (let phraseStart = 0; phraseStart + phrase.length <= tokens.length; phraseStart += 1) {
+			if (!phrase.every((token, offset) => tokens[phraseStart + offset] === token)) continue;
+			for (let size = 3; size <= 6; size += 1) {
+				const first = Math.max(0, phraseStart - size + 1);
+				const last = Math.min(phraseStart + phrase.length - 1, tokens.length - size);
+				for (let start = first; start <= last; start += 1) excluded.add(`${start}:${size}`);
+			}
+		}
+	}
+	return excluded;
+}
+
 function sentences(text) {
 	return text
 		.split(/(?<=[.!?])\s+/)
@@ -140,6 +156,11 @@ for (const dir of CORPUS_DIRS) {
 // including them distorts every corpus-level statistic (similarity, boilerplate
 // frequency, uncertainty markers) against a corpus of 70 leaf case studies.
 const files = [...new Set(CORPUS_DIRS.flatMap((dir) => walk(dir, (name) => name.endsWith('.md') && name !== 'index.md')))].sort();
+const EXCLUDED_PHRASES = [
+	words('hack the box'),
+	words('evidence is handled'),
+	words('target identifiers credentials and secret values are replaced with role-based placeholders command syntax is preserved'),
+];
 
 const records = files.map((file) => {
 	const raw = stripFrontmatter(readFileSync(file, 'utf-8'));
@@ -152,6 +173,7 @@ const records = files.map((file) => {
 		prose,
 		tokens,
 		shingles: shingles(tokens, 3),
+		excludedPhraseWindows: overlappingPhraseWindows(tokens, EXCLUDED_PHRASES),
 		sentences: sentences(prose),
 		paragraphs: paragraphs(prose),
 		headings: headingListRaw,
@@ -190,11 +212,11 @@ for (const pair of pairs) {
 	nearest.set(pair.a, Math.max(nearest.get(pair.a), pair.score));
 	nearest.set(pair.b, Math.max(nearest.get(pair.b), pair.score));
 }
-const headline = pairs.length > 0 ? pairs[0].score : 0;
+const maxSimilarity = pairs.length > 0 ? pairs[0].score : 0;
 const meanNearest = records.length === 0 ? 0 : [...nearest.values()].reduce((s, v) => s + v, 0) / records.length;
 
-title('1. Cross-file similarity (headline: 3-gram Jaccard)');
-log(`most similar pair: ${(headline).toFixed(3)}`);
+title('1. Cross-file similarity (3-gram Jaccard)');
+log(`maximum pairwise similarity: ${maxSimilarity.toFixed(3)}`);
 log(`mean nearest-neighbour similarity: ${meanNearest.toFixed(3)}`);
 log('most similar pairs:');
 for (const pair of pairs.slice(0, 15)) {
@@ -207,6 +229,7 @@ const phraseMap = new Map();
 for (const record of records) {
 	for (let size = 3; size <= 6; size += 1) {
 		for (let i = 0; i + size <= record.tokens.length; i += 1) {
+			if (record.excludedPhraseWindows.has(`${i}:${size}`)) continue;
 			const phrase = record.tokens.slice(i, i + size).join(' ');
 			if (!phraseMap.has(phrase)) phraseMap.set(phrase, { count: 0, files: new Set() });
 			const entry = phraseMap.get(phrase);
@@ -426,8 +449,8 @@ console.log(lines.join('\n'));
 
 if (STRICT) {
 	const failures = [];
-	if (headline >= SIMILARITY_LIMIT) {
-		failures.push(`headline similarity ${headline.toFixed(3)} >= ${SIMILARITY_LIMIT} (${pairs[0].a} <-> ${pairs[0].b})`);
+	if (maxSimilarity >= SIMILARITY_LIMIT) {
+		failures.push(`maximum similarity ${maxSimilarity.toFixed(3)} >= ${SIMILARITY_LIMIT} (${pairs[0].a} <-> ${pairs[0].b})`);
 	}
 	const worstPhrase = phrases[0];
 	if (worstPhrase && worstPhrase.files.length >= BOILERPLATE_FILE_LIMIT) {
