@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { Input } from "../ui/input";
 import type { Kind, SortKey, Study } from "./types";
 import { KINDS, SORT_KEYS } from "./types";
 
@@ -217,7 +218,7 @@ export default function Explorer({ studies }: { studies: Study[] }) {
 					>
 						Search case studies
 					</label>
-					<input
+					<Input
 						id="explorer-search"
 						type="search"
 						placeholder="Try AD CS, Docker, Kerberos, or event logs"

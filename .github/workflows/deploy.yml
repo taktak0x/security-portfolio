@@ -52,8 +52,7 @@ jobs:
         run: pnpm run check:meta
 
       - name: Check content regularity
-        run: pnpm run check:content
-        continue-on-error: true
+        run: pnpm run check:content -- --strict
 
       - name: Check accessibility
         run: pnpm run check:a11y
