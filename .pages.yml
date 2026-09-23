@@ -1,8 +1,16 @@
 media:
-  - name: assets
-    label: Assets
-    input: public/assets
-    output: /assets
+  - name: blog-assets
+    label: Blog assets
+    input: public/assets/blog
+    output: /assets/blog
+    categories: [image]
+    extensions: [avif, gif, jpeg, jpg, png, svg, webp]
+
+settings:
+  content:
+    merge: true
+  commit:
+    identity: user
 
 content:
   - name: blog
@@ -10,6 +18,11 @@ content:
     type: collection
     path: src/content/docs/blog
     format: yaml-frontmatter
+    filename: "{slug}.md"
+    operations:
+      create: true
+      rename: false
+      delete: false
     exclude:
       - index.md
     fields:
@@ -31,19 +44,6 @@ content:
         type: select
         options:
           values: [analysis, note, briefing]
-      - name: category
-        label: Category
-        type: string
-      - name: published
-        label: Published
-        type: date
-        options:
-          format: yyyy-MM-dd
-      - name: updated
-        label: Updated
-        type: date
-        options:
-          format: yyyy-MM-dd
       - name: tags
         label: Tags
         type: string
@@ -53,64 +53,6 @@ content:
         type: rich-text
         options:
           format: markdown
-          media: assets
-          path: public/assets
-
-  - name: lab
-    label: Lab
-    type: collection
-    path: src/content/docs/lab
-    format: yaml-frontmatter
-    exclude:
-      - index.md
-    fields:
-      - name: title
-        label: Title
-        type: string
-        required: true
-      - name: description
-        label: Description
-        type: text
-        required: true
-      - name: type
-        label: false
-        type: string
-        default: lab
-        hidden: true
-      - name: category
-        label: Category
-        type: string
-      - name: published
-        label: Published
-        type: date
-        options:
-          format: yyyy-MM-dd
-      - name: updated
-        label: Updated
-        type: date
-        options:
-          format: yyyy-MM-dd
-      - name: telemetry
-        label: Telemetry
-        type: string
-        list: true
-      - name: defensive_analysis
-        label: Defensive analysis
-        type: boolean
-      - name: references_verified
-        label: References verified
-        type: boolean
-      - name: research_status
-        label: Research status
-        type: string
-      - name: tags
-        label: Tags
-        type: string
-        list: true
-      - name: body
-        label: Body
-        type: rich-text
-        options:
-          format: markdown
-          media: assets
-          path: public/assets
+          switcher: true
+          media: blog-assets
+          path: public/assets/blog
