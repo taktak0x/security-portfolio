@@ -20,11 +20,26 @@ function isCurrent(currentPath: string, href: string): boolean {
 	return currentPath.startsWith(href) && currentPath.length > href.length;
 }
 
-export default function SiteHeader({ currentPath }: { currentPath: string }) {
+export default function SiteHeader({ currentPath: initialPath }: { currentPath: string }) {
 	const [menuOpen, setMenuOpen] = React.useState(false);
 	const [searchOpen, setSearchOpen] = React.useState(false);
+	const [currentPath, setCurrentPath] = React.useState(initialPath);
 	const closeSearch = React.useCallback(() => setSearchOpen(false), []);
 	const isSearchPage = currentPath === "/search/";
+
+	React.useEffect(() => {
+		const handleAfterSwap = () => {
+			setCurrentPath(window.location.pathname);
+			setMenuOpen(false);
+			setSearchOpen(false);
+		};
+
+		setCurrentPath(window.location.pathname);
+		document.addEventListener("astro:after-swap", handleAfterSwap);
+		return () => {
+			document.removeEventListener("astro:after-swap", handleAfterSwap);
+		};
+	}, []);
 
 	return (
 		<header className="portfolio-header sticky top-0 z-10 border-b border-border bg-background">

@@ -85,9 +85,9 @@ function readUrl(): ExplorerState {
 }
 
 // Mirror explorer state into the address bar so a view is shareable. Defaults
-// are omitted so the plain homepage URL stays plain. `push` is true for
-// filter/sort (a new Back entry) and false for typing (replaceState).
-function syncUrl(active: Kind, query: string, sort: SortKey, push: boolean) {
+// are omitted so the plain homepage URL stays plain. Filter, sort, and typing
+// changes replace the current Explorer URL entry.
+function syncUrl(active: Kind, query: string, sort: SortKey) {
 	const params = new URLSearchParams();
 	if (active !== "all") params.set("kind", active);
 	const trimmed = query.trim();
@@ -100,8 +100,7 @@ function syncUrl(active: Kind, query: string, sort: SortKey, push: boolean) {
 	// Back appear to do nothing.
 	const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 	if (url === current) return;
-	if (push) history.pushState(null, "", url);
-	else history.replaceState(null, "", url);
+	history.replaceState(history.state, "", url);
 }
 
 export default function Explorer({ studies }: { studies: Study[] }) {
@@ -126,7 +125,7 @@ export default function Explorer({ studies }: { studies: Study[] }) {
 	React.useEffect(() => {
 		const next = readUrl();
 		setState(next);
-		syncUrl(next.active, next.query, next.sort, false);
+		syncUrl(next.active, next.query, next.sort);
 	}, []);
 
 	// Back/forward: rebuild state and results from the URL.
@@ -177,15 +176,15 @@ export default function Explorer({ studies }: { studies: Study[] }) {
 
 	const setFilter = (kind: Kind) => {
 		setState((prev) => ({ ...prev, active: kind, shown: PAGE_SIZE }));
-		syncUrl(kind, state.query, state.sort, true);
+		syncUrl(kind, state.query, state.sort);
 	};
 	const onSearch = (value: string) => {
 		setState((prev) => ({ ...prev, query: value }));
-		syncUrl(state.active, value, state.sort, false);
+		syncUrl(state.active, value, state.sort);
 	};
 	const onSort = (value: SortKey) => {
 		setState((prev) => ({ ...prev, sort: value }));
-		syncUrl(state.active, state.query, value, true);
+		syncUrl(state.active, state.query, value);
 	};
 	const onLoadMore = () => {
 		setState((prev) => ({ ...prev, shown: prev.shown + PAGE_SIZE }));
@@ -277,7 +276,7 @@ export default function Explorer({ studies }: { studies: Study[] }) {
 			>
 				<span className="explorer-result-js">{resultLabel}</span>
 				{/* No-JS only: every card is revealed, so the truthful count is the
-				    full total. Shown via the noscript rule below, hidden otherwise. */}
+				    full total. Shown via the global fallback rule, hidden otherwise. */}
 				<span className="explorer-result-fallback" hidden>
 					Showing all {studies.length} case studies
 				</span>
@@ -341,23 +340,6 @@ export default function Explorer({ studies }: { studies: Study[] }) {
 					Show 12 more cases
 				</button>
 			</div>
-
-			{/* No-JS fallback: paging and the button are JS-only, so reveal every
-			    card, hide the load-more control, and swap the JS-paginated count
-			    ("Showing N of M" would be wrong once all matches are shown) for the
-			    truthful full total. Scoped to the card class so the empty-state
-			    element stays hidden. The rules must sit in the `base` cascade layer,
-			    not unlayered: Tailwind preflight sets `[hidden]{display:none
-			    !important}` in that layer, and for important declarations an
-			    unlayered rule loses to a layered one, so an unlayered override is
-			    silently ignored. Inside `base` the card and fallback rules also
-			    outrank preflight on specificity. */}
-			<noscript
-				dangerouslySetInnerHTML={{
-					__html:
-						"<style>@layer base{.explorer-card[hidden]{display:grid !important}.explorer-load-more-wrap{display:none !important}.explorer-result-js{display:none !important}.explorer-result-fallback[hidden]{display:inline !important}}</style>",
-				}}
-			/>
 
 			<p
 				hidden={matched.length > 0}

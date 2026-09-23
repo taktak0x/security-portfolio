@@ -1,9 +1,4 @@
-type NetworkInformation = {
-	effectiveType?: string;
-	saveData?: boolean;
-};
-
-const connection = () => (navigator as Navigator & { connection?: NetworkInformation }).connection;
+const connection = () => navigator.connection;
 
 const supportsPrefetch = (() => {
 	try {
@@ -13,28 +8,25 @@ const supportsPrefetch = (() => {
 	}
 })();
 
-const state = window as Window & {
-	__portfolioPrefetchInitialized?: boolean;
-	__portfolioPrefetchCleanup?: () => void;
-};
+const state = window;
 
 if (supportsPrefetch && !state.__portfolioPrefetchInitialized) {
 	state.__portfolioPrefetchInitialized = true;
-	const prefetched = new Set<string>();
-	const pending = new Map<HTMLAnchorElement, number>();
+	const prefetched = new Set();
+	const pending = new Map();
 	const controller = new AbortController();
 	const intentDelay = 120;
 
-	const getAnchor = (event: Event) => {
+	const getAnchor = (event) => {
 		const target = event.target;
-		return target instanceof Element ? target.closest<HTMLAnchorElement>("a[href]") : null;
+		return target instanceof Element ? target.closest("a[href]") : null;
 	};
 
-	const prefetch = (anchor: HTMLAnchorElement) => {
+	const prefetch = (anchor) => {
 		pending.delete(anchor);
 		const network = connection();
 		if (network?.saveData || ["slow-2g", "2g"].includes(network?.effectiveType ?? "")) return;
-		if (!anchor || anchor.target && anchor.target !== "_self" || anchor.hasAttribute("download")) return;
+		if (!anchor || (anchor.target && anchor.target !== "_self") || anchor.hasAttribute("download")) return;
 
 		const url = new URL(anchor.href, location.href);
 		if (url.origin !== location.origin || url.protocol !== location.protocol || anchor.getAttribute("href")?.startsWith("#")) return;
@@ -51,17 +43,17 @@ if (supportsPrefetch && !state.__portfolioPrefetchInitialized) {
 		document.head.append(link);
 	};
 
-	const schedule = (event: Event) => {
-		if (event.type === "pointerenter" && (event as PointerEvent).pointerType === "touch") return;
+	const schedule = (event) => {
+		if (event.type === "pointerenter" && event.pointerType === "touch") return;
 		const anchor = getAnchor(event);
 		if (!anchor || pending.has(anchor)) return;
 		pending.set(anchor, window.setTimeout(() => prefetch(anchor), intentDelay));
 	};
 
-	const cancel = (event: Event) => {
+	const cancel = (event) => {
 		const anchor = getAnchor(event);
-		const relatedTarget = (event as PointerEvent | FocusEvent).relatedTarget;
-		if (!anchor || relatedTarget instanceof Node && anchor.contains(relatedTarget)) return;
+		const relatedTarget = event.relatedTarget;
+		if (!anchor || (relatedTarget instanceof Node && anchor.contains(relatedTarget))) return;
 		const timer = pending.get(anchor);
 		if (timer !== undefined) {
 			window.clearTimeout(timer);

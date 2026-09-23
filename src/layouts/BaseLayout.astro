@@ -2,6 +2,7 @@
 import "../styles/globals.css";
 import SiteHeader from "../components/site/SiteHeader.tsx";
 import SiteFooter from "../components/site/SiteFooter.tsx";
+import { ClientRouter } from "astro:transitions";
 
 interface Props {
 	title: string;
@@ -36,7 +37,7 @@ const caseStudyContentType = caseStudyRoute?.includes("/sherlocks/") ? "sherlock
 ---
 
 <!doctype html>
-<html lang="en">
+<html class="no-js" lang="en" transition:animate="none">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -87,6 +88,9 @@ const caseStudyContentType = caseStudyRoute?.includes("/sherlocks/") ? "sherlock
 		    so the document never flashes the wrong palette. Absent storage = auto. */}
 		<script is:inline>
 			(() => {
+				const root = document.documentElement;
+				root.classList.remove("no-js");
+				root.classList.add("js");
 				let theme;
 				try {
 					const stored = localStorage.getItem("starlight-theme");
@@ -106,6 +110,10 @@ const caseStudyContentType = caseStudyRoute?.includes("/sherlocks/") ? "sherlock
 		<style is:global>
 			html {
 				scroll-padding-top: var(--portfolio-header-h, 5.5rem);
+			}
+			/* Navigation/skip-link focus target, not an interactive control. */
+			#main-content:focus {
+				outline: none;
 			}
 			.portfolio-skip-link {
 				position: absolute;
@@ -144,7 +152,7 @@ const caseStudyContentType = caseStudyRoute?.includes("/sherlocks/") ? "sherlock
 			<rect width="100%" height="100%" filter="url(#surface-grain-noise)"
 			></rect>
 		</svg>
-		<SiteHeader currentPath={currentPath} client:load />
+		<SiteHeader currentPath={currentPath} client:load transition:persist />
 		<slot />
 		<SiteFooter />
 		{/* Measured header height feeds `--portfolio-header-h`, consumed by
@@ -152,9 +160,10 @@ const caseStudyContentType = caseStudyRoute?.includes("/sherlocks/") ? "sherlock
 		    Guarded so a second run cannot stack observers. */}
 		<script is:inline>
 			(() => {
+				const initKey = Symbol.for("taktak.portfolio.header-height");
+				if (window[initKey]) return;
+				window[initKey] = true;
 				const root = document.documentElement;
-				if (root.dataset.headerHeightInit === "true") return;
-				root.dataset.headerHeightInit = "true";
 				// Re-raster the fixed SVG grain after a resize settles. A single
 				// trailing-debounced replace keeps no work running during a drag.
 				let grainTimer;
@@ -169,21 +178,66 @@ const caseStudyContentType = caseStudyRoute?.includes("/sherlocks/") ? "sherlock
 					},
 					{ passive: true },
 				);
-				const header = document.querySelector(".portfolio-header");
-				if (!header) return;
-				const measure = () =>
-					root.style.setProperty(
-						"--portfolio-header-h",
-						`${header.getBoundingClientRect().height}px`,
-					);
-				measure();
-				if (typeof ResizeObserver !== "undefined") {
-					new ResizeObserver(measure).observe(header);
-				} else {
-					window.addEventListener("resize", measure);
-				}
+				let headerObserver;
+				let headerResizeFallback;
+				const bindHeader = () => {
+					headerObserver?.disconnect();
+					if (headerResizeFallback) {
+						window.removeEventListener("resize", headerResizeFallback);
+					}
+					const header = document.querySelector(".portfolio-header");
+					if (!header) return;
+					const measure = () =>
+						root.style.setProperty(
+							"--portfolio-header-h",
+							`${header.getBoundingClientRect().height}px`,
+						);
+					measure();
+					if (typeof ResizeObserver !== "undefined") {
+						headerObserver = new ResizeObserver(measure);
+						headerObserver.observe(header);
+					} else {
+						headerResizeFallback = measure;
+						window.addEventListener("resize", headerResizeFallback);
+					}
+				};
+				document.addEventListener("astro:before-swap", (event) => {
+					const nextRoot = event.newDocument.documentElement;
+					nextRoot.classList.remove("no-js");
+					nextRoot.classList.add("js");
+					const theme = root.dataset.theme;
+					const colorScheme = root.style.colorScheme;
+					if (theme) nextRoot.dataset.theme = theme;
+					else delete nextRoot.dataset.theme;
+					if (colorScheme) nextRoot.style.colorScheme = colorScheme;
+					else nextRoot.style.removeProperty("color-scheme");
+				});
+				bindHeader();
+				// Register before ClientRouter starts, even if React hydration is slow.
+				// Initial page load keeps its native focus; only swaps move it to main.
+				let needsNavigationFocus = false;
+				document.addEventListener("astro:page-load", () => {
+					if (!needsNavigationFocus) return;
+					needsNavigationFocus = false;
+					document.getElementById("main-content")?.focus({ preventScroll: true });
+				});
+				document.addEventListener("astro:after-swap", () => {
+					needsNavigationFocus = true;
+					bindHeader();
+					requestAnimationFrame(() => {
+						const header = document.querySelector(".portfolio-header");
+						if (
+							header &&
+								root.style.getPropertyValue("--portfolio-header-h") !==
+									`${header.getBoundingClientRect().height}px`
+						) {
+							bindHeader();
+						}
+					});
+				});
 			})();
 		</script>
-		<script src="../scripts/prefetch.ts"></script>
+		<script src="/scripts/prefetch.js" type="module" is:inline></script>
+		<ClientRouter />
 	</body>
 </html>
