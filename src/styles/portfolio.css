@@ -88,6 +88,22 @@
 	--surface-grain-opacity: 0.05;
 }
 
+@media (prefers-color-scheme: dark) {
+	html.no-js {
+		--portfolio-ink: #efeae1;
+		--portfolio-muted: #a9a199;
+		--portfolio-surface: #14120f;
+		--portfolio-surface-raised: #1b1815;
+		--portfolio-line: #2c2823;
+		--portfolio-accent: #c98a63;
+		--portfolio-accent-strong: #e0a57e;
+		--portfolio-accent-soft: #3a2a20;
+		--portfolio-accent-contrast: #1a1a17;
+		--control-line: #6f675d;
+		--surface-grain-opacity: 0.05;
+	}
+}
+
 html {
 	background: var(--portfolio-surface);
 }

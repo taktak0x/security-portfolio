@@ -36,6 +36,15 @@
 	}
 }
 
+@layer base {
+	html.no-js #explorer > div:nth-of-type(2),
+	html.no-js #explorer > div:nth-of-type(3),
+	html.no-js #explorer .explorer-load-more-wrap { display: none !important; }
+	html.no-js #explorer .explorer-card[hidden] { display: grid !important; }
+	html.no-js #explorer .explorer-result-js { display: none !important; }
+	html.no-js #explorer .explorer-result-fallback[hidden] { display: inline !important; }
+}
+
 @theme inline {
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);

@@ -7,6 +7,7 @@ import tailwindcss from '@tailwindcss/vite';
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://taktak.hu',
+	prefetch: false,
 	security: {
 		csp: {
 			algorithm: "SHA-256",
@@ -23,8 +24,8 @@ export default defineConfig({
 			scriptDirective: {
 				resources: ["'self'"],
 				hashes: [
-					"sha256-OT6rncc3q/HAZxFhU8Z7usSuSFUYlKM4kgPHZV03rBg=",
-					"sha256-Zq2C3D7tul51zk4otXeF3betszC3IgHnvOlehVJyxOE=",
+					"sha256-oNgIasqWozDMWz3imrUfmqE5AU2WHKPYvIB75jH96oQ=",
+					"sha256-lEvjbA2F4BmqUsWsRlfcv6vcGZjDX1uLVDgH1hBSK3c=",
 					"sha256-DHuK3BTFJHv6tO/o0w6Q9CBLZXOE7meJeHLXV2EmBUw=",
 					"sha256-eul7RODnaOvI+OTE6Yc3WDU7UHyKbLyWAExV32Cq22c=",
 				],
