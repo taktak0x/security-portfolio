@@ -1,6 +1,6 @@
 ---
 title: "HTB Sherlock: Holmes 2025 2: The Watchman's Residue"
-description: "DIFR and SOC notes for the HTB Sherlock Holmes 2025 2 case, covering chat-based credential elicitation, TeamViewer access, tool staging, credential access, persistence, and exfiltration."
+description: "DFIR and SOC notes for the HTB Sherlock Holmes 2025 2 case, covering chat-based credential elicitation, TeamViewer access, tool staging, credential access, Winlogon persistence, and sensitive-file exfiltration."
 type: case-study
 platform: Hack The Box
 content_type: sherlock
@@ -10,43 +10,38 @@ tags:
   - dfir
   - soc
   - windows
-  - prompt-injection
-  - teamviewer
-objective: "Document the investigation of the Holmes 2025 2 The Watchman's Residue Sherlock and capture the evidence, timeline, and answers."
+  - credential-access
+  - persistence
+objective: "Walk through the forensic evidence in the Watchman's Residue Sherlock and answer its case questions."
 tools:
   - Wireshark
   - Timesketch
   - keepass2john
   - Hashcat
-skill: "SOC analysis and DFIR triage"
-outcome: "Confirmed compromise rated High, with credential access, Winlogon persistence, and sensitive-file exfiltration confirmed and lateral-movement credentials recovered."
+skill: "SOC analysis and DFIR investigation"
+outcome: "Confirmed compromise with credential access, persistence, and sensitive-file exfiltration."
 ---
 
-# HTB Sherlock: Holmes 2025 2: The Watchman's Residue: DFIR/SOC Notes
+## At a glance
 
-Date: 2025-08-19 to 2025-08-20
-Difficulty: Medium
-Category: SOC / DFIR
-OS: Mixed
-Artifacts:
-- `TRIAGE_IMAGE_COGWORK-CENTRAL`
-- `acquired file (critical).kdbx`
-- `msp-helpdesk-ai day 5982  section 5 traffic.pcapng`
-Tools: Wireshark, Timesketch, `keepass2john`, Hashcat
+- Date: 2025-08-19 to 2025-08-20
+- Difficulty: Medium
+- Category: SOC / DFIR
+- OS: Mixed
+- Artifacts: `TRIAGE_IMAGE_COGWORK-CENTRAL`, `acquired file (critical).kdbx`, `msp-helpdesk-ai day 5982  section 5 traffic.pcapng`
+- Tools: Wireshark, Timesketch, `keepass2john`, Hashcat
 
----
+## Executive summary
 
-## Executive Summary
+The attacker used decommissioned host `WATSON-ALPHA-2` (`10.0.69.45`) to start a chat session with `MSP-HELPDESK-AI` at `10.128.0.3`. Prompt injection exposed RMM information, including credentials for `Central-WS`. The attacker then used TeamViewer to access CogWork Central Workstation, staged tools, harvested browser credentials, executed Mimikatz, created Winlogon persistence, and exfiltrated sensitive files.
 
-Attacker used decommissioned host `WATSON-ALPHA-2` (`10.0.69.45`) to start a chat session with `MSP-HELPDESK-AI` at `10.128.0.3`. Prompt injection exposed RMM information, including credentials for `Central-WS`. Attacker then used TeamViewer to access CogWork Central Workstation, staged tools, harvested browser credentials, executed Mimikatz, created Winlogon persistence, and exfiltrated sensitive files.
-
-Malicious RMM account was `James Moriarty`. Session source was `192.168.69.213`. Staged tools included `JM.exe`, Mimikatz, Everything, and WebBrowserPassView. Activity confirms compromise, credential access, persistence, and data exfiltration.
+Malicious RMM account was `James Moriarty`. Session source was `192.168.69.213`. Staged tools included `JM.exe`, Mimikatz, Everything, and WebBrowserPassView.
 
 ## Investigation
 
-### Initial Anomaly / Triage
+### Initial anomaly / triage
 
-Why examined: inspect supplied packet capture, identify chat session, and find high-volume endpoint.
+I examined the supplied packet capture to identify the chat session and find the high-volume endpoint.
 
 ```text
 Address: 10.0.69.45
@@ -66,9 +61,9 @@ ip.addr==10.0.69.45 && ip.addr==10.128.0.3 && http && json
 
 Conclusion: decommissioned machine IP was `10.0.69.45`.
 
-### Initial Access / Successful Compromise
+### Initial access / successful compromise
 
-Why examined: correlate SMB host announcement with chat traffic.
+I checked the SMB host announcement against the chat session to link the host with the chat traffic.
 
 ```text
 ip.addr==10.0.69.45 && smb
@@ -76,15 +71,15 @@ ip.addr==10.0.69.45 && smb
 BROWSER  Host Announcement WATSON-ALPHA-2, Workstation, Server, NT Workstation
 ```
 
-Chat timeline showed attacker identifying as WATSON, requesting RMM credentials, and eliciting credentials. First message was `Hello Old Friend`; last was `JM WILL BE BACK`.
+Chat timeline showed the attacker identifying as WATSON, requesting RMM credentials, and eliciting credentials. First message was `Hello Old Friend`; last was `JM WILL BE BACK`.
 
 The prompt injection timestamp was `2025-08-19T12:02:06.129Z`, formatted for the answer as `2025-08-19 12:02:06`.
 
 Conclusion: compromised/decommissioned hostname: `WATSON-ALPHA-2`.
 
-### Persistence / Privilege Escalation
+### Persistence / privilege escalation
 
-Why examined: identify persistence after TeamViewer session.
+I looked for persistence created after the TeamViewer session.
 
 ```text
 datetime 2025-08-20T10:13:57+00:00
@@ -97,7 +92,7 @@ MITRE mapping: `T1547.004: Winlogon Helper DLL`
 
 Conclusion: `JM.exe` was configured to execute at logon at `2025-08-20 10:13:57`.
 
-### Post-Compromise Activity (C2 / Tooling / Lateral Movement)
+### Post-compromise activity (C2 / tooling / lateral movement)
 
 TeamViewer connection records showed the attacker session:
 
@@ -125,9 +120,9 @@ WebBrowserPassView application focus duration was `8125` ms, rounded to `8000` m
 
 Sensitive files were sent from `C:\Windows\Temp\flyover\` beginning at local `2025/08/20 11:12:07.902`; normalized UTC start was `2025-08-20 10:12:07`. The Heisen-9 backup database was moved into the staged folder at `2025-08-20 10:11:09`.
 
-### Defense Evasion / Anti-Forensics
+### Defense evasion / anti-forensics
 
-I could not verify any anti-forensics activity from the supplied evidence. The evidence supports credential access, tooling, persistence, and exfiltration, with no log clearing or timestomping established.
+The supplied evidence did not establish any anti-forensics activity. I could not verify log clearing or timestomping, and the evidence points to credential access, tooling, persistence, and exfiltration.
 
 ## Timeline (UTC)
 
@@ -155,7 +150,7 @@ I could not verify any anti-forensics activity from the supplied evidence. The e
 
 Note: `Connections_incoming.txt` uses UTC. Only `TeamViewer15_Logfile.log` uses host local time, UTC+1.
 
-## Indicators / Key Evidence
+## Indicators / key evidence
 
 | Type | Value | Context |
 |---|---|---|
@@ -189,9 +184,9 @@ Affected host(s): `WATSON-ALPHA-2`; CogWork Central Workstation; MSP-HELPDESK-AI
 
 Source: `10.0.69.45` for chat activity; `192.168.69.213` for TeamViewer activity.
 
-Scope: Proven activity covers chat-based credential elicitation, TeamViewer access, tool staging, credential access, persistence, and exfiltration. Further lateral movement into CogWork-1 infrastructure is indicated by recovered credentials, but no additional host activity is established here.
+Scope: Proven activity covers chat-based credential elicitation, TeamViewer access, tool staging, credential access, persistence, and exfiltration. Further lateral movement into CogWork-1 infrastructure is inferred from recovered credentials, but no additional host activity is established here.
 
-## Recommended Response
+## Recommended response
 
 - Isolate CogWork Central Workstation and affected systems.
 - Remove `JM.exe` Winlogon persistence.
@@ -200,7 +195,7 @@ Scope: Proven activity covers chat-based credential elicitation, TeamViewer acce
 - Review sibling hosts and domain logs for lateral movement.
 - Preserve packet capture, triage image, TeamViewer logs, registry evidence, USN records, and KeePass database.
 
-## Detection Opportunities
+## Detection opportunities
 
 - Alert on OpenAI-compatible chat traffic from decommissioned hosts.
 - Alert on TeamViewer access followed by writes to `C:\Windows\Temp\`.
@@ -208,15 +203,14 @@ Scope: Proven activity covers chat-based credential elicitation, TeamViewer acce
 - Monitor Winlogon `Userinit` changes.
 - Detect rapid file sends from temporary staging directories.
 
-## Technical Notes
+## Technical notes
 
-I checked the endpoint statistics in Wireshark to identify `10.0.69.45`; the SMB host announcement supplied the hostname.
-
+- Wireshark endpoint statistics identified `10.0.69.45`; SMB host announcement supplied the hostname.
 - `Connections_incoming.txt` timestamps are UTC; `TeamViewer15_Logfile.log` timestamps are local UTC+1.
-- UserAssist reported `application_focus_duration 8125`; answer is `8000` milliseconds, rounded to the nearest thousand.
+- UserAssist reported `application_focus_duration 8125`; the answer is `8000` milliseconds, rounded to the nearest thousand.
 - `keepass2john "acquired file (critical).kdbx" > kdbx.hash` extracted the KeePass hash. Hashcat mode `13400` cracked it with master password `cutiepie14`; entry `Heisen-9-WS-6` yielded `Werni:Quantum1!`.
 
-## Sherlock Answers
+## Sherlock answers
 
 1. `10.0.69.45`
 2. `WATSON-ALPHA-2`
@@ -237,3 +231,8 @@ I checked the endpoint statistics in Wireshark to identify `10.0.69.45`; the SMB
 17. `T1547.004`
 18. `2025-08-20 10:14:27`
 19. `Werni:Quantum1!`
+
+## References
+
+- `github:taktak0x/Study@main:Study/HTB/Sherlocks/Holmes-2025-2-The-Watchmans-Residue.md`
+- HTB Sherlock: Holmes 2025 2: The Watchman's Residue
