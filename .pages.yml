@@ -1,0 +1,58 @@
+media:
+  - name: blog-assets
+    label: Blog assets
+    input: public/assets/blog
+    output: /assets/blog
+    categories: [image]
+    extensions: [avif, gif, jpeg, jpg, png, svg, webp]
+
+settings:
+  content:
+    merge: true
+  commit:
+    identity: user
+
+content:
+  - name: blog
+    label: Blog
+    type: collection
+    path: src/content/docs/blog
+    format: yaml-frontmatter
+    filename: "{slug}.md"
+    operations:
+      create: true
+      rename: false
+      delete: false
+    exclude:
+      - index.md
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: description
+        label: Description
+        type: text
+        required: true
+      - name: type
+        label: false
+        type: string
+        default: blog
+        hidden: true
+      - name: blog_type
+        label: Blog type
+        type: select
+        options:
+          values: [analysis, note, briefing]
+      - name: tags
+        label: Tags
+        type: string
+        list: true
+      - name: body
+        label: Body
+        type: rich-text
+        options:
+          format: markdown
+          switcher: true
+          media: blog-assets
+          path: public/assets/blog
