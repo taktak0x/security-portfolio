@@ -1,6 +1,6 @@
 ---
 title: "HTB Sherlock: Holmes 2025 2: The Watchman's Residue"
-description: "DFIR/SOC writeup of a prompt-injection-enabled intrusion: decommissioned host WATSON-ALPHA-2 elicits RMM credentials from MSP-HELPDESK-AI, then TeamViewer access leads to tool staging, credential access, Winlogon persistence, and exfiltration at CogWork Central Workstation."
+description: "DIFR and SOC notes for the HTB Sherlock Holmes 2025 2 case, covering chat-based credential elicitation, TeamViewer access, tool staging, credential access, persistence, and exfiltration."
 type: case-study
 platform: Hack The Box
 content_type: sherlock
@@ -12,17 +12,14 @@ tags:
   - windows
   - prompt-injection
   - teamviewer
-  - credential-access
-  - persistence
-  - exfiltration
-objective: "Reconstruct the intrusion from the supplied evidence (packet capture, triage image, TeamViewer logs, registry, USN records, and KeePass database) and recover the 19 Sherlock answers."
+objective: "Document the investigation of the Holmes 2025 2 The Watchman's Residue Sherlock and capture the evidence, timeline, and answers."
 tools:
   - Wireshark
   - Timesketch
   - keepass2john
   - Hashcat
-skill: "DFIR/SOC analysis: network forensics, prompt-injection review, RMM log correlation, Windows artifact triage, credential cracking, and MITRE ATT&CK mapping."
-outcome: "Confirmed compromise with chat-based credential elicitation, TeamViewer access, tool staging, credential access, persistence via Winlogon Userinit, and sensitive-file exfiltration; all 19 Sherlock answers recovered."
+skill: "SOC analysis and DFIR triage"
+outcome: "Confirmed compromise rated High, with credential access, Winlogon persistence, and sensitive-file exfiltration confirmed and lateral-movement credentials recovered."
 ---
 
 # HTB Sherlock: Holmes 2025 2: The Watchman's Residue: DFIR/SOC Notes
@@ -67,7 +64,7 @@ Endpoint communicated with `10.128.0.3` over stream `19`. HTTP/JSON traffic expo
 ip.addr==10.0.69.45 && ip.addr==10.128.0.3 && http && json
 ```
 
-Conclusion: decommissioned machine IP was **`10.0.69.45`**.
+Conclusion: decommissioned machine IP was `10.0.69.45`.
 
 ### Initial Access / Successful Compromise
 
@@ -83,7 +80,7 @@ Chat timeline showed attacker identifying as WATSON, requesting RMM credentials,
 
 The prompt injection timestamp was `2025-08-19T12:02:06.129Z`, formatted for the answer as `2025-08-19 12:02:06`.
 
-Conclusion: compromised/decommissioned hostname: **`WATSON-ALPHA-2`**.
+Conclusion: compromised/decommissioned hostname: `WATSON-ALPHA-2`.
 
 ### Persistence / Privilege Escalation
 
@@ -96,9 +93,9 @@ command Userinit.exe, JM.exe
 message ... Application: Userinit Command: Userinit.exe, JM.exe Trigger: Logon
 ```
 
-MITRE mapping: **`T1547.004: Winlogon Helper DLL`**
+MITRE mapping: `T1547.004: Winlogon Helper DLL`
 
-Conclusion: `JM.exe` was configured to execute at logon at **`2025-08-20 10:13:57`**.
+Conclusion: `JM.exe` was configured to execute at logon at `2025-08-20 10:13:57`.
 
 ### Post-Compromise Activity (C2 / Tooling / Lateral Movement)
 
@@ -124,13 +121,13 @@ mimikatz.exe
 webbrowserpassview.zip
 ```
 
-WebBrowserPassView application focus duration was `8125` ms, rounded to **`8000`** ms. Mimikatz execution was anchored by Prefetch creation at `2025-08-20T10:07:08.174475+00:00`. `dump.txt` was created, extended, and closed at `2025-08-20T10:08:06.370303+00:00`.
+WebBrowserPassView application focus duration was `8125` ms, rounded to `8000` ms. Mimikatz execution was anchored by Prefetch creation at `2025-08-20T10:07:08.174475+00:00`. `dump.txt` was created, extended, and closed at `2025-08-20T10:08:06.370303+00:00`.
 
-Sensitive files were sent from `C:\Windows\Temp\flyover\` beginning at local `2025/08/20 11:12:07.902`; normalized UTC start was **`2025-08-20 10:12:07`**. The Heisen-9 backup database was moved into the staged folder at **`2025-08-20 10:11:09`**.
+Sensitive files were sent from `C:\Windows\Temp\flyover\` beginning at local `2025/08/20 11:12:07.902`; normalized UTC start was `2025-08-20 10:12:07`. The Heisen-9 backup database was moved into the staged folder at `2025-08-20 10:11:09`.
 
 ### Defense Evasion / Anti-Forensics
 
-No anti-forensics activity was established by supplied evidence. The evidence supports credential access, tooling, persistence, and exfiltration rather than log clearing or timestomping.
+I could not verify any anti-forensics activity from the supplied evidence. The evidence supports credential access, tooling, persistence, and exfiltration, with no log clearing or timestomping established.
 
 ## Timeline (UTC)
 
@@ -213,7 +210,8 @@ Scope: Proven activity covers chat-based credential elicitation, TeamViewer acce
 
 ## Technical Notes
 
-- Wireshark endpoint statistics identified `10.0.69.45`; SMB host announcement supplied the hostname.
+I checked the endpoint statistics in Wireshark to identify `10.0.69.45`; the SMB host announcement supplied the hostname.
+
 - `Connections_incoming.txt` timestamps are UTC; `TeamViewer15_Logfile.log` timestamps are local UTC+1.
 - UserAssist reported `application_focus_duration 8125`; answer is `8000` milliseconds, rounded to the nearest thousand.
 - `keepass2john "acquired file (critical).kdbx" > kdbx.hash` extracted the KeePass hash. Hashcat mode `13400` cracked it with master password `cutiepie14`; entry `Heisen-9-WS-6` yielded `Werni:Quantum1!`.
@@ -239,13 +237,3 @@ Scope: Proven activity covers chat-based credential elicitation, TeamViewer acce
 17. `T1547.004`
 18. `2025-08-20 10:14:27`
 19. `Werni:Quantum1!`
-
-## Provenance
-
-- run_id: `129`
-- agent_id: `editor`
-- source_ref: `github:taktak0x/Study@main:Study/HTB/Sherlocks/Holmes-2025-2-The-Watchmans-Residue.md`
-
-Ingest: status `ready`; idempotency_key `ingest:129:github:taktak0x/Study@main:Study/HTB/Sherlocks/Holmes-2025-2-The-Watchmans-Residue.md`; provenance `agent_id=ingest`, `run_id=129`; blocked_reason `null`.
-
-Retirement: mode `retirement`; attestations `retirement-a` and `retirement-b` both `decision=pass`; identity `github:taktak0x/Study@main:Study/HTB/Sherlocks/Holmes-2025-2-The-Watchmans-Residue.md#cab4775b5d5c044c712fce50ce2e6a109f66174c`; evidence `htb-proof:1069:retired_free`.
