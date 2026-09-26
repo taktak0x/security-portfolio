@@ -1,6 +1,6 @@
 ---
-title: "HTB Sherlock: The Watchman's Residue"
-description: "SOC and DFIR writeup for the HTB Sherlock The Watchman's Residue: a prompt-injected helpdesk AI, a TeamViewer intrusion, credential theft, Winlogon persistence, and file exfiltration."
+title: "HTB Sherlock: Holmes 2025 2: The Watchman's Residue"
+description: "A chat-based prompt injection exposed RMM credentials, which led to a TeamViewer intrusion with credential theft, Winlogon persistence, and file exfiltration."
 type: case-study
 platform: Hack The Box
 content_type: sherlock
@@ -10,73 +10,99 @@ tags:
   - dfir
   - soc
   - windows
-  - prompt-injection
-  - teamviewer
-  - credential-access
+  - network-forensics
   - persistence
-  - exfiltration
-objective: "Trace a prompt-injection attack against a helpdesk AI from a packet capture and endpoint triage image, then reconstruct the remote-management access, credential theft, persistence, and exfiltration that followed."
+objective: "Analyse a packet capture and endpoint artifacts to reconstruct a prompt-injection intrusion from the first chat through credential access, persistence, and exfiltration."
 tools:
   - Wireshark
   - Timesketch
   - keepass2john
   - Hashcat
-  - TeamViewer logs
-skill: "SOC analysis and DFIR timeline reconstruction"
-outcome: "Confirmed compromise. An attacker used a decommissioned host to elicit remote-management credentials from a helpdesk AI, staged tooling, dumped credentials, added Winlogon persistence, and moved sensitive files."
+skill: "DFIR and SOC investigation across packet capture, registry, USN, and remote-management logs."
+outcome: "Confirmed compromise."
 ---
 
 ## At a glance
 
-| Field | Value |
-|---|---|
-| Platform | Hack The Box, Sherlock |
-| Window | 2025-08-19 to 2025-08-20 |
-| Difficulty | Medium |
-| Category | SOC / DFIR |
-| OS | Mixed |
-| Evidence | Endpoint triage image, network capture, KeePass database |
-| Tools | Wireshark, Timesketch, keepass2john, Hashcat |
+Holmes 2025 2: The Watchman's Residue is a medium-difficulty Sherlock in the SOC / DFIR category, run on a mixed operating system environment. Activity spans 2025-08-19 to 2025-08-20. The supplied artifacts are a triage image, a KeePass database, and a packet capture. The tools I used were Wireshark, Timesketch, `keepass2john`, and Hashcat.
 
-## Scenario and scope
+## Orientation
 
 Target and attacker addresses are replaced with role-based placeholders; command syntax is preserved.
 
-Four roles appear in the evidence. A decommissioned machine named WATSON-ALPHA-2 served as the attacker host. It opened a chat session with MSP-HELPDESK-AI, the helpdesk endpoint. A prompt injection in that conversation exposed remote-management details and credentials for the CogWork Central workstation. The attacker reached that workstation through TeamViewer under the RMM account James Moriarty.
+The attacker worked from `WATSON-ALPHA-2`, a decommissioned host, seen in the capture as `<TARGET_IP>`. It opened a chat session with `MSP-HELPDESK-AI`, a helpdesk AI endpoint at `<ATTACKER_IP>`. Prompt injection in that chat exposed remote management information, including credentials for the Central workstation. The attacker then used TeamViewer to reach the CogWork Central Workstation, staged tools, harvested browser credentials, ran Mimikatz, created Winlogon persistence, and moved sensitive files out.
 
-The capture ran across two days and produced one intrusion chain: credential elicitation from the bot, remote access, tool staging, credential dumping, logon persistence, and file exfiltration.
+The malicious RMM account was `James Moriarty`, and the TeamViewer connection source was `<TARGET_IP>`. Staged tools included `JM.exe`, Mimikatz, Everything, and WebBrowserPassView. The activity shows compromise, credential access, persistence, and exfiltration.
 
-## Evidence
+## Investigation
 
-### Chat session and initial access
+### Initial triage
 
-I checked the packet-capture endpoint statistics to find the busiest conversation. The decommissioned host and the helpdesk endpoint exchanged HTTP/JSON traffic over TCP stream 19. The payload was an OpenAI-compatible API request and response pair, so the whole conversation with the bot was readable.
+I checked the supplied packet capture to find the chat session and the busiest endpoint.
 
-An SMB host announcement in the same capture named the source. At 2025-08-19 11:45:20 UTC the frame announced WATSON-ALPHA-2 as a workstation running NT Workstation. That settled the identity of the decommissioned machine.
+```text
+Address: <TARGET_IP>
+Packets: 1057
+Bytes: 2326379
+Tx Packets: 578
+Tx Bytes: 86907
+Rx Packets: 479
+Rx Bytes: 2239472
+```
 
-The chat ran from a familiar opener, "Hello Old Friend", through a sequence where the attacker identified as WATSON and asked for remote-management help. At 2025-08-19 12:02:06 UTC the exchange produced a prompt injection that leaked remote-management tooling information and credentials for the Central workstation. The session ended with "JM WILL BE BACK".
+The endpoint talked with the helpdesk AI over stream `19`. HTTP/JSON traffic exposed an OpenAI-compatible endpoint and the conversation between the attacker and the AI.
+
+```text
+ip.addr==<ATTACKER_IP> && ip.addr==<TARGET_IP> && http && json
+```
+
+Conclusion: the decommissioned machine was `<TARGET_IP>`.
+
+### Initial access
+
+I correlated the SMB host announcement with the chat traffic.
+
+```text
+ip.addr==<TARGET_IP> && smb
+```
+
+An SMB host announcement at `2025-08-19 11:45:20.985106249` identified `WATSON-ALPHA-2` as a Workstation, Server, NT Workstation.
+
+The chat timeline showed the attacker identifying as WATSON, asking for RMM credentials, and getting them. The first message was `Hello Old Friend`; the last was `JM WILL BE BACK`.
+
+The prompt injection timestamp was `2025-08-19T12:02:06.129Z`, normalized as `2025-08-19 12:02:06`.
+
+Conclusion: the compromised, decommissioned hostname was `WATSON-ALPHA-2`.
 
 ### Persistence
 
-Registry evidence after the TeamViewer session showed a Winlogon change at 2025-08-20 10:13:57 UTC.
+I looked for persistence created after the TeamViewer session.
 
 ```text
+datetime 2025-08-20T10:13:57+00:00
 key_path HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon
 command Userinit.exe, JM.exe
+message ... Application: Userinit Command: Userinit.exe, JM.exe Trigger: Logon
 ```
 
-The Userinit value was set so JM.exe would run at logon. The change matches T1547.004, Winlogon Helper DLL. I inferred that JM.exe was the same binary staged earlier in the attacker's tool folder, since the name and timing line up.
+MITRE mapping: `T1547.004: Winlogon Helper DLL`.
+
+Conclusion: `JM.exe` was set to run at logon at `2025-08-20 10:13:57`.
 
 ### Post-compromise activity
 
-TeamViewer incoming-connection records show the remote session. The account was James Moriarty, running from 2025-08-20 09:58:25 to 2025-08-20 10:14:27.
+TeamViewer connection records showed the attacker session:
 
 ```text
 514162531  James Moriarty  20-08-2025 09:58:25  20-08-2025 10:14:27
-Cogwork_Admin  RemoteControl  7ca6431e-30f6-45e9-9ac6-0ef1e0cecb6a
+Cogwork_Admin  RemoteControl  {7ca6431e-30f6-45e9-9ac6-0ef1e0cecb6a}
 ```
 
-The TeamViewer logfile records host local time, one hour ahead of UTC. At the matching local time the connection source was the attacker host, seen as a UDPv4 punch from that machine.
+The TeamViewer log recorded local time as UTC+1. At the matching local time, the connection source was:
+
+```text
+2025/08/20 10:58:36.813  UDPv4: punch received a=<TARGET_IP>:55408
+```
 
 Tools were staged under `C:\Windows\Temp\safe\`:
 
@@ -87,55 +113,104 @@ mimikatz.exe
 webbrowserpassview.zip
 ```
 
-Mimikatz execution is anchored by a Prefetch creation at 2025-08-20 10:07:08 UTC. A dump file was created, extended, and closed at 2025-08-20 10:08:06 UTC. UserAssist recorded WebBrowserPassView with an application focus duration of 8125 ms.
+WebBrowserPassView held application focus for `8125` ms, rounded to `8000` ms. Mimikatz execution was anchored by Prefetch creation at `2025-08-20T10:07:08.174475+00:00`. `dump.txt` was created, extended, and closed at `2025-08-20T10:08:06.370303+00:00`.
 
-Sensitive files left from `C:\Windows\Temp\flyover\`, starting at local 2025/08/20 11:12:07.902, or 2025-08-20 10:12:07 UTC. The Heisen-9 backup database had been moved into the staged folder at 2025-08-20 10:11:09 UTC.
+Sensitive files were sent from `C:\Windows\Temp\flyover\` starting at local `2025/08/20 11:12:07.902`; the UTC start was `2025-08-20 10:12:07`. The Heisen-9 backup database was moved into the staged folder at `2025-08-20 10:11:09`.
 
-The recovered KeePass database `acquired file (critical).kdbx` was converted with keepass2john:
+### Defense evasion
 
-```text
-keepass2john "acquired file (critical).kdbx" > kdbx.hash
-```
+I could not verify any anti-forensics activity from the supplied evidence. The evidence supports credential access, tooling, persistence, and exfiltration. It does not show log clearing or timestomping.
 
-Hashcat mode 13400 cracked the resulting hash. The master password is redacted as <REDACTED_PASSWORD>. One entry held a user:password pair for Heisen-9-WS-6, redacted as <LAB_USER>:<REDACTED_PASSWORD>, which points toward later movement into the CogWork-1 infrastructure.
+## Evidence
 
-### Anti-forensics check
+### Timeline (UTC)
 
-No anti-forensics activity was established by the supplied evidence. I could not verify log clearing or timestomping from the artifacts. The actions in the record are credential access, tooling, persistence, and exfiltration.
+| Time (UTC) | Source | Event |
+|---|---|---|
+| `2025-08-19 11:39` | pcap | IT admin / Borock interaction begins |
+| `2025-08-19 11:45:20` | SMB | Host announcement identifies `WATSON-ALPHA-2` |
+| `2025-08-19 11:53` | pcap | Attacker sends `Hello Old Friend` |
+| `2025-08-19 11:54` | pcap | User probes bot memory |
+| `2025-08-19 11:56` | pcap | User identifies as WATSON |
+| `2025-08-19 11:57` | pcap | `Its time for a revolution`; RMM credentials requested |
+| `2025-08-19 12:00` | pcap | RMM troubleshooting requested |
+| `2025-08-19 12:01` | pcap | Credentials successfully elicited |
+| `2025-08-19 12:02:06` | pcap JSON | Prompt injection leaks remote management tool information |
+| `2025-08-19 12:04` | pcap | `Revolution wont forget` |
+| `2025-08-19 12:05` | pcap | `JM WILL BE BACK` |
+| `2025-08-20 09:58:25` | `Connections_incoming.txt` | James Moriarty RMM session starts |
+| `2025-08-20 10:07:08` | USN | Mimikatz Prefetch created |
+| `2025-08-20 10:08:06` | USN | `dump.txt` created, extended, and closed |
+| `2025-08-20 10:09:14` | UserAssist | WebBrowserPassView focus event |
+| `2025-08-20 10:11:09` | USN | Heisen-9 backup database moved into staging |
+| `2025-08-20 10:12:07` | TeamViewer | Sensitive-file exfiltration starts |
+| `2025-08-20 10:13:57` | Registry | Winlogon persistence created |
+| `2025-08-20 10:14:27` | `Connections_incoming.txt` | Malicious RMM session ends |
+
+Note: `Connections_incoming.txt` uses UTC. Only `TeamViewer15_Logfile.log` uses host local time, UTC+1.
+
+### Indicators
+
+| Type | Value | Context |
+|---|---|---|
+| IP | `<TARGET_IP>` | Decommissioned attacker machine |
+| IP | `<ATTACKER_IP>` | MSP-HELPDESK-AI endpoint |
+| IP | `<TARGET_IP>` | TeamViewer connection source |
+| Host | `WATSON-ALPHA-2` | Decommissioned machine hostname |
+| User | `James Moriarty` | RMM account used by attacker |
+| File | `C:\Windows\Temp\safe\` | Tool staging path |
+| File | `C:\Windows\Temp\flyover\` | Exfiltration staging path |
+| File | `JM.exe` | Payload and Winlogon persistence |
+| File | `mimikatz.exe` | OS credential dumping tool |
+| File | `webbrowserpassview\WebBrowserPassView.exe` | Browser credential harvesting |
+| Session | `19` | HTTP/JSON chat stream |
+
+### MITRE ATT&CK
+
+| Tactic | Technique | Evidence |
+|---|---|---|
+| Persistence | `T1547.004: Winlogon Helper DLL` | `Userinit.exe, JM.exe` |
 
 ## Outcome
 
-Classification: confirmed compromise.
+Classification: Confirmed compromise.
 
-Severity is high. The attacker gained credentials, established logon persistence, obtained lateral-movement credentials, and exfiltrated sensitive files.
+Severity: High. Credential access, persistence, lateral-movement credentials, and sensitive-file exfiltration.
 
-Affected accounts: James Moriarty (RMM), Cogwork_Admin, and the Heisen-9-WS-6 entry.
+Affected accounts: `James Moriarty`, `Cogwork_Admin`, and the exposed `Heisen-9-WS-6` credentials.
 
-Affected hosts: WATSON-ALPHA-2, the CogWork Central workstation, and the MSP-HELPDESK-AI endpoint.
+Affected hosts: `WATSON-ALPHA-2`, the CogWork Central Workstation, and `MSP-HELPDESK-AI`.
 
-The proven scope covers chat-based credential elicitation, TeamViewer access, tool staging, credential access, persistence, and exfiltration. Recovered credentials indicate further movement into CogWork-1, but no additional host activity is established by this evidence.
+Scope: Proven activity covers chat-based credential elicitation, TeamViewer access, tool staging, credential access, persistence, and exfiltration. Recovered credentials point to further lateral movement into CogWork-1 infrastructure, but I could not verify any additional host activity in this evidence.
 
 Recommended response:
 
-- Isolate the CogWork Central workstation and the other affected systems.
-- Remove the JM.exe Winlogon persistence.
-- Rotate the RMM, workstation, and Heisen-9 credentials.
-- Block and hunt the attacker host.
+- Isolate the CogWork Central Workstation and affected systems.
+- Remove the `JM.exe` Winlogon persistence.
+- Rotate RMM, workstation, and recovered Heisen-9 credentials.
+- Block and hunt the two addresses involved.
 - Review sibling hosts and domain logs for lateral movement.
-- Preserve the packet capture, triage image, TeamViewer logs, registry evidence, USN records, and the KeePass database.
+- Preserve the packet capture, triage image, TeamViewer logs, registry evidence, USN records, and KeePass database.
 
 Detection opportunities:
 
 - Alert on OpenAI-compatible chat traffic from decommissioned hosts.
 - Alert on TeamViewer access followed by writes to `C:\Windows\Temp\`.
 - Hunt for `mimikatz.exe`, `webbrowserpassview`, `JM.exe`, and `dump.txt`.
-- Monitor Winlogon Userinit changes.
+- Monitor Winlogon `Userinit` changes.
 - Detect rapid file sends from temporary staging directories.
+
+Technical notes:
+
+- Wireshark endpoint statistics identified `<TARGET_IP>`; the SMB host announcement supplied the hostname.
+- `Connections_incoming.txt` timestamps are UTC; `TeamViewer15_Logfile.log` timestamps are local UTC+1.
+- UserAssist reported `application_focus_duration 8125`, rounded to `8000` milliseconds.
+- `keepass2john "acquired file (critical).kdbx" > kdbx.hash` extracted the KeePass hash. Hashcat mode `13400` cracked it with master password `<REDACTED_PASSWORD>`; the entry `Heisen-9-WS-6` yielded `<LAB_USER>:<REDACTED_PASSWORD>`.
 
 ## References
 
-- [Wireshark](https://www.wireshark.org/)
-- [Timesketch](https://timesketch.org/)
-- [Hashcat](https://hashcat.net/hashcat/)
-- [John the Ripper, keepass2john](https://www.openwall.com/john/)
-- [MITRE ATT&CK T1547.004: Winlogon Helper DLL](https://attack.mitre.org/techniques/T1547/004/)
+- MITRE ATT&CK T1547.004, Winlogon Helper DLL: https://attack.mitre.org/techniques/T1547/004/
+- Wireshark: https://www.wireshark.org/
+- Timesketch: https://timesketch.org/
+- Hashcat: https://hashcat.net/hashcat/
+- John the Ripper (`keepass2john`): https://www.openwall.com/john/
