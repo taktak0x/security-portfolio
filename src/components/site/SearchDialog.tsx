@@ -12,7 +12,8 @@ type Entry = {
 	tools?: string[];
 	skill?: string;
 	outcome?: string;
-	category?: string;
+	routeCategory?: string;
+	semanticCategory?: string;
 	kind?: string;
 	label?: string;
 };
@@ -27,7 +28,8 @@ function fieldValues(entry: Entry): string[] {
 		entry.title,
 		entry.description,
 		entry.objective,
-		entry.category,
+		entry.routeCategory,
+		entry.semanticCategory,
 		entry.label,
 		...(entry.tags ?? []),
 		...(entry.tools ?? []),

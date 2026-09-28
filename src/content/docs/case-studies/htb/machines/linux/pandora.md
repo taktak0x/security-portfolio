@@ -4,7 +4,8 @@ seoTitle: "Pandora — SNMP Credential Leak and SUID PATH Hijacking"
 description: "SNMP enumeration leaks credentials for SSH access; an internal Pandora FMS instance reached through SSH dynamic forwarding is SQL-injected for session hijacking, and a SUID backup binary calling tar by relative name enables PATH hijacking to root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

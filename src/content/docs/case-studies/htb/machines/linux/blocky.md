@@ -3,7 +3,8 @@ title: "Blocky — Exposed Plugin Credentials and Unrestricted Sudo"
 description: "Web enumeration exposes a custom Java plugin; decompilation reveals hardcoded database credentials later reused for SSH, and an unrestricted sudo policy yields root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

@@ -3,7 +3,8 @@ title: "Cascade — Anonymous LDAP Disclosure and AD Recycle Bin Credential Reco
 description: "Anonymous LDAP disclosure, SMB configuration artifacts, audit-app analysis, and AD Recycle Bin data combine into a credential-exposure chain."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

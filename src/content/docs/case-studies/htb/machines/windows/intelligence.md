@@ -3,7 +3,8 @@ title: "Intelligence — PDF Metadata to GMSA Silver Ticket via DNS Injection"
 description: "PDF metadata and a default onboarding password enable DNS record injection and NTLM capture, then GMSA silver-ticket abuse reaches Domain Administrator."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

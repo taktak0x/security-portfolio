@@ -3,7 +3,8 @@ title: "Breach — Kerberoasting and Unconstrained Delegation to Domain Administ
 description: "A guest-readable logon script and excessive directory permissions lead through Kerberos delegation abuse to domain compromise."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

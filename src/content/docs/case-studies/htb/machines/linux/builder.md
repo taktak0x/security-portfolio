@@ -3,7 +3,8 @@ title: "Builder — Unauthenticated Jenkins CLI File Read to Root Credential Rec
 description: "Unauthenticated Jenkins CLI file read (CVE-2024-23897) exposes a bcrypt password hash whose offline recovery unlocks the Script Console, and the credential store then reveals a path to root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

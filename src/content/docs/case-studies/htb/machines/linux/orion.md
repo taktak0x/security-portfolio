@@ -3,7 +3,8 @@ title: "Orion — Craft CMS Pre-Auth RCE and Loopback Telnet Authentication Bypa
 description: "Craft CMS pre-authentication RCE (CVE-2025-32432) and plaintext database credentials lead to an administrator hash and SSH access; a GNU inetutils telnet authentication bypass (CVE-2026-24061) on loopback yields root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

@@ -3,7 +3,8 @@ title: "Scrambled — Weak Password Reset and Kerberos Ticket Forgery in Active 
 description: "A weak password reset enables Kerberoasting and silver-ticket forgery, then SeImpersonate abuse escalates to SYSTEM via GodPotato."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

@@ -3,7 +3,8 @@ title: "Editor — XWiki CVE-2025-24893 RCE to Netdata ndsudo PATH Hijack"
 description: "XWiki SolrSearch unauthenticated Groovy code execution (CVE-2025-24893) provides a foothold; reused database credentials enable SSH, and a SUID Netdata ndsudo helper is hijacked through PATH to reach root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

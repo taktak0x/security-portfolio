@@ -3,7 +3,8 @@ title: "Knife — PHP 8.1.0-dev Backdoor RCE and NOPASSWD knife Escalation"
 description: "A backdoored PHP 8.1.0-dev build executes code through the User-Agentt header, and an unrestricted sudo rule for the Chef knife tool is abused via knife exec to reach root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

@@ -3,7 +3,8 @@ title: "BoardLight — Dolibarr RCE and Enlightenment SUID Privilege Escalation"
 description: "Virtual host enumeration reveals a Dolibarr CRM instance with default credentials; authenticated RCE, credential reuse, and an Enlightenment SUID flaw chain to root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

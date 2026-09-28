@@ -3,7 +3,8 @@ title: "Principal"
 description: "A Medium Linux Hack The Box machine where a pac4j-jwt JWE authentication bypass opens the dashboard, the exposed encryption key doubles as an SSH password, and a leaked SSH CA private key yields root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-26"
 tags:

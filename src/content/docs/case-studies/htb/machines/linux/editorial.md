@@ -3,7 +3,8 @@ title: "Editorial — SSRF and Git History Credential Leak to GitPython Command 
 description: "SSRF in a book-cover upload exposes an internal API and development credentials; Git history reveals production credentials, and a sudo-permitted GitPython script vulnerable to CVE-2022-24439 yields root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

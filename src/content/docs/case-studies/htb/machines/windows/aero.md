@@ -3,7 +3,8 @@ title: "Aero — ThemeBleed and CLFS Privilege Escalation"
 description: "A malicious Windows theme upload on the ThemeBleed path yields a shell, then CLFS abuse escalates to SYSTEM."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

@@ -3,7 +3,8 @@ title: "Timelapse — Certificate-Based WinRM Access and LAPS Password Disclosur
 description: "An SMB share exposes a protected certificate archive, and PowerShell history leaks a service account with LAPS read access."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

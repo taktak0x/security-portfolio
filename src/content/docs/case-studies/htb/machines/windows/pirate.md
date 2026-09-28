@@ -3,7 +3,8 @@ title: "Pirate — gMSA Disclosure, NTLM-Relay RBCD, and SPN Abuse to Domain Con
 description: "Kerberos clock-skew alignment, gMSA enumeration, and an NTLM relay pivot lead through delegation abuse to domain controller compromise."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

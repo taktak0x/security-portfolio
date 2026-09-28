@@ -3,7 +3,8 @@ title: "Eighteen — MSSQL Impersonation to badsuccessor Delegation and DCSync"
 description: "A weakly secured MSSQL database yields cracked credentials, then badsuccessor OU delegation and DCSync complete domain compromise."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

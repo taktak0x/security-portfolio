@@ -3,7 +3,8 @@ title: "TheFrizz — Gibbon LMS RCE and a Group Policy Creator Owners Escalation
 description: "Gibbon LMS enumeration and database credential recovery lead to a Group Policy Creator Owners path toward Domain Administrator."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

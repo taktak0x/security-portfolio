@@ -3,7 +3,8 @@ title: "Manager — AD CS ESC7 via Certificate Authority Abuse"
 description: "RID brute forcing, password spraying, and a legacy backup expose ManageCA rights, enabling the AD CS ESC7 abuse chain to domain compromise."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

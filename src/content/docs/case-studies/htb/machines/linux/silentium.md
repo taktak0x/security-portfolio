@@ -3,7 +3,8 @@ title: "Silentium — Flowise Token Disclosure and CustomMCP Code Injection to R
 description: "A password-reset token returned in an API response, unsafe dynamic configuration evaluation in an AI-agent platform, and container secret exposure chain through an internal service to privileged access."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

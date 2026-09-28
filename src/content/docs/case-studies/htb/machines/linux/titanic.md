@@ -3,7 +3,8 @@ title: "Titanic — Path Traversal to ImageMagick Shared-Library Hijacking"
 description: "A download endpoint's path traversal exposes Gitea configuration and database data for password recovery and SSH access; an ImageMagick shared-library hijack (CVE-2024-41817) in a scheduled process provides elevated access."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

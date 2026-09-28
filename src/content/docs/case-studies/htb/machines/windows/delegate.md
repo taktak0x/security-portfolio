@@ -3,7 +3,8 @@ title: "Delegate — Active Directory Unconstrained Delegation via NETLOGON Scri
 description: "NETLOGON script credentials and GenericWrite over a delegation admin enable Kerberoasting, PetitPotam coercion, and DCSync."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

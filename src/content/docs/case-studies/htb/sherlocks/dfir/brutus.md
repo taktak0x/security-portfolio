@@ -3,7 +3,8 @@ title: "Brutus — SSH Brute-Force, Interactive Root Access, and a Persistent Su
 description: "Sanitized HTB Sherlock case study correlating authentication logs and session records to reconstruct an SSH brute-force, interactive root access, and a persistent sudo account."
 type: case-study
 platform: Hack The Box
-content_type: sherlock
+exercise_type: sherlock
+category: dfir
 status: published-ready
 addedAt: "2026-09-14"
 tags:

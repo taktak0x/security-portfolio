@@ -3,7 +3,8 @@ title: "Escape — AD CS ESC1 from Anonymous SMB and MSSQL Coercion"
 description: "Anonymous SMB and MSSQL coercion recover credentials, then AD CS ESC1 certificate abuse yields the privileged account NT hash."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

@@ -3,7 +3,8 @@ title: "Heist — Cisco Config Leak to Firefox Credential Extraction"
 description: "A leaked Cisco configuration yields SMB and WinRM access, then Firefox process memory recovery exposes the Administrator password."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

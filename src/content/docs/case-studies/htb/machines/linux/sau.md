@@ -3,7 +3,8 @@ title: "Sau — SSRF Chain to Maltrail Command Injection and Pager Escape"
 description: "SSRF in request-baskets (CVE-2023-27163) reaches an internal Maltrail service vulnerable to command injection, and a NOPASSWD systemctl status rule is escalated through a less-pager escape (CVE-2023-26604) to root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

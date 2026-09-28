@@ -3,7 +3,8 @@ title: "HTB Sherlock: Holmes 2025 2: The Watchman's Residue"
 description: "DFIR notes from a medium-difficulty Sherlock where a decommissioned host was used to prompt-inject an MSP helpdesk AI, then remotely access a workstation to dump credentials, add persistence, and exfiltrate files."
 type: case-study
 platform: Hack The Box
-content_type: sherlock
+exercise_type: sherlock
+category: dfir
 status: published-ready
 addedAt: "2026-09-26"
 tags:
