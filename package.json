@@ -24,7 +24,7 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/react": "^6.0.6",
+    "@astrojs/react": "^7.0.0",
     "@astrojs/sitemap": "3.7.4",
     "@astrojs/starlight": "^0.42.2",
     "@radix-ui/react-dropdown-menu": "^2.1.24",
