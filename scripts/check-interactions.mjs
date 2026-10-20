@@ -739,6 +739,37 @@ async function testExplorerInteractivity() {
 	console.log(`       (explorer reacted in ~${elapsed}ms, status: "${status.text}")`);
 }
 
+async function testShortPageFooter() {
+	await setViewport(1280, 900);
+	await goto('/profiles/');
+
+	const metrics = await evaluate(`(() => {
+		const footer = document.querySelector('.portfolio-footer');
+		const main = document.querySelector('#main-content');
+		if (!footer || !main) return null;
+		return {
+			viewport: window.innerHeight,
+			scrollHeight: document.documentElement.scrollHeight,
+			footerTop: footer.getBoundingClientRect().top,
+			footerBottom: footer.getBoundingClientRect().bottom,
+			mainBottom: main.getBoundingClientRect().bottom,
+		};
+	})()`);
+	assert(metrics, 'short page is missing the footer or main content');
+	assert(
+		metrics.scrollHeight <= metrics.viewport + 1,
+		`short page still scrolls (scrollHeight ${metrics.scrollHeight} > viewport ${metrics.viewport})`,
+	);
+	assert(
+		metrics.footerBottom >= metrics.viewport - 1,
+		`footer ends above the viewport bottom (${metrics.footerBottom} < ${metrics.viewport})`,
+	);
+	assert(
+		metrics.mainBottom <= metrics.footerTop + 1,
+		`footer overlaps main content (main bottom ${metrics.mainBottom}, footer top ${metrics.footerTop})`,
+	);
+}
+
 async function testNarrowViewportOverflow() {
 	await setViewport(320, 640);
 	await goto('/');
@@ -899,6 +930,7 @@ try {
 		console.log('check-interactions: running assertions');
 		await check('search dialog top stable and list scrolls independently', testSearchDialogStability);
 		await check('explorer controls respond to typing promptly', testExplorerInteractivity);
+		await check('short page keeps footer at viewport bottom', testShortPageFooter);
 		await check('320px homepage/header has no horizontal overflow', testNarrowViewportOverflow);
 		await check('mobile case document order', testMobileCaseOrder);
 		await testMobileTocs();
