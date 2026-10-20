@@ -8,7 +8,7 @@ import ThemeControl from "./ThemeControl";
 
 const LINKS = [
 	{ href: "/archive/", label: "Archive" },
-	// { href: "/blog/", label: "Blog" },
+	{ href: "/blog/", label: "Blog" },
 	// { href: "/lab/", label: "Lab" },
 	{ href: "/profiles/", label: "About" },
 	{ href: "/prolabs/", label: "Pro Labs" },
