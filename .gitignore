@@ -20,6 +20,10 @@ pnpm-debug.log*
 .env
 .env.production
 
+# Python bytecode from repository checks
+__pycache__/
+*.pyc
+
 # macOS-specific files
 .DS_Store
 
