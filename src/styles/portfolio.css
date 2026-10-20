@@ -109,8 +109,16 @@ html {
 }
 
 body {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+	min-height: 100svh;
 	color: var(--portfolio-ink);
 	background-color: var(--portfolio-surface);
+}
+
+body > main {
+	flex: 1 0 auto;
 }
 
 /*
