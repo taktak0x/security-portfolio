@@ -50,6 +50,28 @@ function waitForExit(child, timeout = 5000) {
 	});
 }
 
+// The launcher can leave renderer/zygote children behind when only the parent
+// process is signalled. On POSIX the browser is started as its own process
+// group, so a negative PID terminates the whole tree and releases the DevTools
+// port. Windows has no process-group equivalent here, so it falls back to the
+// child handle.
+function killBrowserTree(child, signal) {
+	if (!child?.pid) return;
+	if (process.platform !== 'win32') {
+		try {
+			process.kill(-child.pid, signal);
+			return;
+		} catch {
+			// The group may already be gone; fall through to the child handle.
+		}
+	}
+	try {
+		child.kill(signal);
+	} catch {
+		// Already exited.
+	}
+}
+
 async function waitForPortClosed(port, timeout = 5000) {
 	const deadline = Date.now() + timeout;
 	while (Date.now() < deadline) {
@@ -199,7 +221,10 @@ async function launchBrowser(browserPath, profileDir) {
 			'--window-size=1280,900',
 			'about:blank',
 		],
-		{ stdio: ['ignore', 'ignore', 'pipe'] },
+		{
+			detached: process.platform !== 'win32',
+			stdio: ['ignore', 'ignore', 'pipe'],
+		},
 	);
 
 	let stderr = '';
@@ -222,7 +247,7 @@ async function launchBrowser(browserPath, profileDir) {
 		}
 		await sleep(100);
 	}
-	child.kill('SIGKILL');
+	killBrowserTree(child, 'SIGKILL');
 	await waitForExit(child);
 	throw new Error(`timed out waiting for DevToolsActivePort\n${stderr}`);
 }
@@ -230,9 +255,20 @@ async function launchBrowser(browserPath, profileDir) {
 async function stopBrowser(instance, profileDir) {
 	try {
 		if (!instance?.child) return;
-		if (instance.child.exitCode === null) instance.child.kill('SIGKILL');
-		assert(await waitForExit(instance.child), 'browser process did not exit after SIGKILL');
-		assert(await waitForPortClosed(instance.port), `browser DevTools port ${instance.port} remained open`);
+		if (instance.child.exitCode === null) {
+			killBrowserTree(instance.child, 'SIGTERM');
+			if (!(await waitForExit(instance.child, 3000))) {
+				killBrowserTree(instance.child, 'SIGKILL');
+				assert(
+					await waitForExit(instance.child, 5000),
+					'browser process did not exit after SIGKILL',
+				);
+			}
+		}
+		assert(
+			await waitForPortClosed(instance.port, 10000),
+			`browser DevTools port ${instance.port} remained open`,
+		);
 	} finally {
 		await removeDir(profileDir);
 	}
