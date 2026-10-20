@@ -231,8 +231,8 @@ The script embeds a credential pair.
 
 ```powershell
 $username = "<REMOTE_ACCESS_USER>"
-$password = ConvertTo-SecureString "<REMOTE_ACCESS_PASSWORD>" -AsPlainText -Force
-$credentials = New-Object System.Management.Automation.PSCredential($username, $password)
+$secString = ConvertTo-SecureString "<REMOTE_ACCESS_PASSWORD>" -AsPlainText -Force
+$credentials = New-Object System.Management.Automation.PSCredential($username, $secString)
 ```
 
 Validating the embedded credential through SMB shows broader access, including write access to `C$`.

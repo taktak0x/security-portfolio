@@ -232,7 +232,7 @@ Result: the response returns the root SSH private key for the target.
 
 ```json
 {"note":"Emergency recovery key dump",
- "root_private_key":"-----BEGIN OPENSSH PRIVATE KEY-----\n<ROOT_PRIVATE_KEY>",
+ "root_private_key":"<ROOT_PRIVATE_KEY_PEM>",
  "target":"ssh_keys"}
 ```
 

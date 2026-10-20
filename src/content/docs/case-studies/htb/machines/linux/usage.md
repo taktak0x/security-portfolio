@@ -217,9 +217,8 @@ The privileged backup prints the referenced file:
 Choose an option:
 1. Project Backup
 ...
------BEGIN OPENSSH PRIVATE KEY-----
-<REDACTED_KEY_MATERIAL>
------END OPENSSH PRIVATE KEY-----
+<OPENSSH_PRIVATE_KEY_PEM>
+[key material omitted]
 ```
 
 Action: save the disclosed key with restricted permissions and authenticate as root.

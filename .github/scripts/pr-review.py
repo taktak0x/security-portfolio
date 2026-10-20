@@ -27,7 +27,7 @@ ALLOWED_FILE = re.compile(
 )
 DEV_FILE = re.compile(
     r"(?:\.github/(?:workflows|scripts)/|scripts/|src/|docs/|config/)"
-    r"[A-Za-z0-9][A-Za-z0-9._/-]*\Z"
+    r"[A-Za-z0-9\[][A-Za-z0-9._/\[\]-]*\Z"
 )
 UNSAFE_FILE = re.compile(r"(?:^|/)(?:__pycache__|node_modules|dist|build|coverage)(?:/|$)|\.(?:pyc|log|sqlite3?)\Z")
 SENSITIVE_FILE = re.compile(
@@ -409,6 +409,8 @@ def self_test():
     assert not valid_files([{"filename": "src/content/docs/case-studies/secrets.md"}])
     assert valid_files([{"filename": ".github/workflows/pr-review.yml"}], "dev")
     assert valid_files([{"filename": ".github/scripts/pr-review.py"}], "dev")
+    assert valid_files([{"filename": "src/pages/[...slug].astro"}], "dev")
+    assert valid_files([{"filename": "src/pages/og/[...slug].png.ts"}], "dev")
     assert not valid_files([{"filename": ".env"}], "dev")
     assert review_pr(api, 7, write=True)["written"] is True
     assert api.writes[-1][2]["event"] == "APPROVE"

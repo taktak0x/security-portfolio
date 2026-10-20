@@ -156,9 +156,8 @@ println(hudson.util.Secret.decrypt("<ENCRYPTED_JENKINS_SECRET>"))
 ```
 
 ```text
------BEGIN RSA PRIVATE KEY-----
+<RSA_PRIVATE_KEY_PEM>
 [key material omitted]
------END RSA PRIVATE KEY-----
 ```
 
 The recovered key authenticates directly as root:
