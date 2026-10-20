@@ -1,6 +1,6 @@
 ---
-title: "Why AES-ECB Leaks Structure: A Byte-at-a-Time Oracle"
-description: "A local AES-ECB oracle that recovers a 30-byte secret one byte at a time, why deterministic block encryption leaks equality, and what to use instead."
+title: "Why ECB Mode Leaks Structure: A Byte-at-a-Time Oracle"
+description: "How a local AES-128-ECB oracle gives up a 30-byte secret one byte at a time, why ECB leaks block equality, and what to use instead."
 type: blog
 blog_type: analysis
 tags:
@@ -10,19 +10,19 @@ tags:
   - python
 ---
 
-AES-ECB encrypts each 16-byte block independently. Equal plaintext blocks become equal ciphertext blocks under the same key. An attacker who can submit chosen input and read the ciphertext can use that equality to recover a secret without attacking AES itself.
+AES-ECB encrypts each 16-byte block on its own, so equal plaintext blocks become equal ciphertext blocks under the same key. An attacker who can submit chosen input and read the ciphertext can use that equality to recover a secret without attacking AES itself.
 
-I built a local oracle around AES-128-ECB and recovered a 30-byte secret in 853 queries. The solver never sees the key. It compares ciphertext blocks and keeps the candidate that produces a match.
+This post rebuilds the classic byte-at-a-time attack ([Cryptopals Set 2, Challenge 12](https://cryptopals.com/sets/2/challenges/12)) against a local AES-128-ECB oracle. The solver recovers a 30-byte secret in 761 queries. It never sees the key: it compares ciphertext blocks and keeps the candidate that produces a match.
 
 ## The property that breaks it
 
-ECB is a mode of operation; AES is the cipher. FIPS 197 defines AES, and NIST SP 800-38A defines ECB and the other modes. Under ECB, each block is encrypted on its own:
+ECB is a mode of operation; AES is the cipher. FIPS 197 defines AES, and NIST SP 800-38A defines ECB along with the other classic confidentiality modes. Under ECB, each block is encrypted independently:
 
 ```text
 C[i] = E(K, P[i])
 ```
 
-There is no chaining value, no initialization vector, and no per-message state. Two identical plaintext blocks therefore produce identical ciphertext blocks:
+There is no chaining value, no initialization vector, and no per-message state, so nothing varies from one block to the next. Identical plaintext blocks therefore produce identical ciphertext blocks. Encrypting 32 bytes of `A` followed by 16 bytes of `B` under AES-128 with the key `00 01 02 ... 0f` shows it:
 
 ```text
 block 0  AAAAAAAAAAAAAAAA  ->  dd4b1a0b47daa7067d0b59d95d58a6ae
@@ -30,47 +30,49 @@ block 1  AAAAAAAAAAAAAAAA  ->  dd4b1a0b47daa7067d0b59d95d58a6ae
 block 2  BBBBBBBBBBBBBBBB  ->  87f815ad0e513346e0afe99814b1a504
 ```
 
-Those values come from AES-128 with the key `000102...0f`. A viewer who sees the first two blocks can tell that the first two plaintext blocks were identical, even without the key. The exact bytes do not matter.
+Anyone who sees those ciphertext blocks can tell that the first two plaintext blocks were equal, without the key and without knowing what they contained. The `show_equality()` function in the complete script at the end of this post prints this listing.
 
-This is the same property behind the ECB penguin: large runs of one colour in an image survive encryption as repeated ciphertext blocks, so the outline remains visible. ECB hides the contents of each block, while the pattern between blocks remains visible.
+This is the same property behind the well-known ECB penguin: large runs of a single color in an image survive encryption as repeated ciphertext blocks, so the outline stays visible. ECB hides the contents of each block, but the pattern between blocks remains visible.
 
 ## A local oracle
 
-The demo needs Python 3 and the `cryptography` package. It uses a fixed key and a fixed secret. It places attacker input before a fixed blob, so the input shifts the secret across block boundaries.
+The demo needs Python 3.9 or later and the `cryptography` package. The oracle uses a fixed key and a fixed 30-byte secret, and it puts the attacker's input in front of the secret, so the input can shift the secret across block boundaries.
 
 ```python
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
 import string
+
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 KEY = bytes(range(16))
 SECRET = b"demo{ecb_mode_leaks_structure}"
-FIXED = b"|" + SECRET
 ALPHABET = (string.ascii_letters + string.digits + string.punctuation + " ").encode()
 queries = 0
+
+
+def ecb_encrypt(plaintext: bytes) -> bytes:
+    encryptor = Cipher(algorithms.AES(KEY), modes.ECB()).encryptor()
+    return encryptor.update(plaintext) + encryptor.finalize()
 
 
 def oracle(prefix: bytes) -> bytes:
     global queries
     queries += 1
-    pt = prefix + FIXED
     padder = padding.PKCS7(128).padder()
-    pt = padder.update(pt) + padder.finalize()
-    enc = Cipher(algorithms.AES(KEY), modes.ECB()).encryptor()
-    return enc.update(pt) + enc.finalize()
+    return ecb_encrypt(padder.update(prefix + SECRET) + padder.finalize())
 
 
-def blocks(data: bytes, block_size: int) -> list[bytes]:
-    return [data[i:i + block_size] for i in range(0, len(data), block_size)]
+def blocks(data: bytes, size: int) -> list[bytes]:
+    return [data[i:i + size] for i in range(0, len(data), size)]
 ```
 
-`FIXED` is 31 bytes, so it is not block aligned. PKCS#7 padding brings an empty input to 32 bytes, which is two blocks. The delimiter is part of the fixed blob on purpose: the solver recovers it as the first byte and strips it afterwards.
+The key stays inside `ecb_encrypt` and `oracle`. The solver functions below call only `oracle` and `blocks`. The oracle appends the secret to whatever prefix it receives and applies PKCS#7 padding, so the ciphertext length grows in whole-block steps as the prefix grows. The next step uses exactly that.
 
-I fixed the key so the run is reproducible. A real target keeps its key secret, and the attack never needs it.
+I fixed the key so the ciphertext values in this post are reproducible. The attack never needs it, and the query counts do not depend on it.
 
-## Measure the block size and fixed length
+## Measure the block size and the secret length
 
-Ciphertext length grows in block-sized steps. The first increase gives both the block size and the length of the fixed data.
+The ciphertext grows in block-sized steps. Send one more filler byte at a time until the length jumps; the size of the jump is the block size. At the jump, the filler plus the secret fill a whole number of blocks exactly, and PKCS#7 adds one extra block of padding. The ciphertext length is therefore `n + secret_len + block_size`, which gives the secret length:
 
 ```python
 def measure_parameters() -> tuple[int, int]:
@@ -79,123 +81,212 @@ def measure_parameters() -> tuple[int, int]:
         current = len(oracle(b"A" * n))
         if current > previous:
             block_size = current - previous
-            fixed_len = (current // block_size - 1) * block_size - n
-            return block_size, fixed_len
+            secret_len = current - block_size - n
+            return block_size, secret_len
         previous = current
     raise RuntimeError("no length change observed")
-
-
-block_size, fixed_len = measure_parameters()
-print(f"block size: {block_size}")
-print(f"fixed length: {fixed_len} bytes")
 ```
 
-With a 31-byte fixed blob, the first jump happens at `n = 1`. The input plus fixed data reaches 32 bytes, padding adds a full block, and the ciphertext goes from 32 to 48 bytes. The formula subtracts the padding block and the one byte of filler:
+With a 30-byte secret, an empty input pads to 32 bytes, and so does one filler byte. Two filler bytes make 32 bytes of plaintext, PKCS#7 adds a full block, and the ciphertext jumps from 32 to 48 bytes:
 
 ```text
-(48 // 16 - 1) * 16 - 1 = 31
+n = 2: 48 - 16 - 2 = 30
 ```
 
-Output:
+If the secret were block-aligned, the first jump would come later, at `n = 16`, and the same formula would still apply.
 
 ```text
 block size: 16
-fixed length: 31 bytes
+secret length: 30 bytes
 ```
-
-Those 31 bytes are the delimiter plus 30 secret bytes. With block-aligned fixed data, the first jump would happen later, and the same formula still applies.
 
 ## Recover one byte at a time
 
-At offset `i`, choose filler length `n = (16 - 1 - i) % 16`. That places the unknown byte at the last position of block `(n + i) // 16`.
+At offset `i`, use `n = (16 - 1 - i) % 16` filler bytes. That puts the unknown byte at the last position of block `(n + i) // 16`.
 
-For the first byte, `i = 0` and `n = 15`. The target query encrypts 15 `A` bytes followed by the fixed blob. Block 0 holds `AAAAAAAAAAAAAAA` plus the first fixed byte. For the second byte, `i = 1` and `n = 14`. Block 0 holds 14 `A` bytes, the first recovered byte, and the next unknown byte.
+For the first byte, `i = 0` and `n = 15`: the oracle encrypts 15 `A` bytes followed by the secret, so block 0 holds the 15 `A` bytes plus the first secret byte. For the second byte, `i = 1` and `n = 14`: block 0 holds 14 `A` bytes, the first recovered byte, and the second, still unknown byte.
 
-The target block comes from a query whose input is only filler, so the unknown byte sits at the block edge. Each candidate comes from a query with the filler, the bytes recovered so far, and the candidate byte. When the candidate is correct, the two 16-byte blocks are identical.
+The solver gets the target block from a query that contains only filler, which leaves the unknown byte at the end of the block. It then sends the filler, the bytes recovered so far, and one candidate byte. When the candidate is correct, the two 16-byte blocks are identical.
 
 ```python
-recovered = b""
-
-for i in range(fixed_len):
-    n = (block_size - 1 - i) % block_size
-    block_index = (n + i) // block_size
-    target = blocks(oracle(b"A" * n), block_size)[block_index]
-
-    for candidate in ALPHABET:
-        probe = blocks(oracle(b"A" * n + recovered + bytes([candidate])), block_size)[block_index]
-        if probe == target:
-            recovered += bytes([candidate])
-            break
-    else:
-        raise RuntimeError(f"no candidate matched at offset {i}")
+def recover_secret(block_size: int, secret_len: int) -> bytes:
+    recovered = b""
+    for i in range(secret_len):
+        n = (block_size - 1 - i) % block_size
+        index = (n + i) // block_size
+        target = blocks(oracle(b"A" * n), block_size)[index]
+        for candidate in ALPHABET:
+            probe = oracle(b"A" * n + recovered + bytes([candidate]))
+            if blocks(probe, block_size)[index] == target:
+                recovered += bytes([candidate])
+                break
+        else:
+            raise RuntimeError(f"no candidate matched at offset {i}")
+    return recovered
 ```
 
-The alignment for the first two blocks looks like this:
+The alignment for the first few offsets looks like this:
 
-| Offset `i` | Filler `n` | Block | Unknown byte position |
-|---:|---:|---:|---:|
-| 0 | 15 | 0 | 15 |
-| 1 | 14 | 0 | 15 |
-| 15 | 0 | 0 | 15 |
-| 16 | 15 | 1 | 31 |
+| Offset `i` | Filler `n` | Block index | Position in block | Position in ciphertext |
+|---:|---:|---:|---:|---:|
+| 0 | 15 | 0 | 15 | 15 |
+| 1 | 14 | 0 | 15 | 15 |
+| 15 | 0 | 0 | 15 | 15 |
+| 16 | 15 | 1 | 15 | 31 |
 
-The comparison is an equality test. The solver never decrypts anything. Only the oracle touches the key, and the solver only asks whether two ciphertext blocks match.
+The unknown byte is always the last byte of its block; only the block index changes. The comparison is a plain equality test. The solver never decrypts anything, and the key stays inside the oracle.
 
 ## The run
 
 ```text
 block size: 16
-fixed length: 31 bytes
-recovered: b'|demo{ecb_mode_leaks_structure}'
-queries: 853
+secret length: 30 bytes
+recovered: b'demo{ecb_mode_leaks_structure}'
+queries: 761
 ```
 
-This blob starts with the delimiter. `recovered[1:]` is the demo secret.
+The 761 queries break down as 3 to measure the parameters, 30 target queries (one per byte), and 728 candidate probes, about 24 per byte.
 
-I used 95 printable ASCII candidates, so 31 bytes cost 853 queries, about 27 per byte. Keeping the alphabet to printable ASCII made the recovered string easy to inspect. A binary secret needs all 256 byte values. I did not run that variant, but the loop is the same. The alphabet size and the position of the correct byte set the cost.
+The cost depends on the candidate list and, just as much, on its order. I used the 95 printable ASCII characters in the order Python's `string` module lists them: lowercase letters, uppercase letters, digits, punctuation, then space. A lowercase `a` costs one probe, while the closing `}` is the 93rd candidate. If every byte were the last candidate, the run would take 2,883 queries; if every byte were the first, 63. Both figures include the 3 measuring queries.
+
+A binary secret needs all 256 byte values. I ran the same solver with `bytes(range(256))` as the candidate list, and it took 3,273 queries for this secret. That figure depends on the secret and on the candidate order, but the loop itself does not change.
 
 ## What the attack needs
 
-An oracle must be deterministic and the fixed data must stay in the same position across queries. When an application adds a random prefix on every request, the block boundaries move and the target block changes. The simple comparison fails, and the attacker has to find a stable alignment first.
+The attack has three requirements:
 
-An attacker also needs chosen plaintext and the resulting ciphertext. A single captured ciphertext is not enough. When an application compresses or encodes the secret before encryption, the attack recovers the encoded form.
+- **Chosen input next to the secret.** The attacker controls bytes that land immediately before the secret, so the secret can be slid across a block boundary. A single captured ciphertext is not enough.
+- **Determinism.** The same key, mode, and input must give the same ciphertext.
+- **A stable alignment.** The secret's position relative to the attacker's input must not change between queries. A prefix of constant length only shifts the alignment by a fixed amount, which the attacker can compensate for. A prefix whose length varies from request to request moves the block boundaries, so the target block changes between queries and the simple comparison stops working; the attacker would have to find a stable alignment first. I did not build either variant.
 
-This does not recover the AES key, and it does not apply to a correctly used AEAD. It recovers plaintext from a mode that leaks block equality.
+What comes out is the plaintext exactly as the oracle encrypts it. If an application compresses or encodes the secret before encryption, the attacker recovers that encoded form.
 
-## What else the leak enables
+The attack does not recover the AES key, and it does not work against a correctly used AEAD, which produces different ciphertext for the same input because every message gets a fresh nonce. It recovers plaintext from a mode that leaks block equality.
 
-The same equality leak enables block reordering, cut-and-paste, and pattern recognition. The byte-at-a-time oracle turns the leak into full plaintext recovery with a small amount of code.
+## What else ECB's design allows
 
-ECB still appears in legacy storage, database encryption settings, and embedded code because it is simple and parallel. Those properties explain why the mode survives. They do not make it safe for structured or multi-block data.
+Equality leakage is one consequence of encrypting blocks independently; malleability is another. Because each block stands alone and nothing authenticates the message as a whole, an attacker can reorder, repeat, drop, or splice blocks, including blocks taken from other messages, without triggering any integrity failure. The byte-at-a-time oracle turns the equality leak into full plaintext recovery with a short script.
 
-The failure is in the mode choice. AES-128 with ECB is still AES. The mode drops the chaining that hides block equality. A longer key does not restore it.
+## Why ECB keeps showing up
+
+ECB is simple, parallelizable, and needs no IV, which is why it survives in legacy storage and embedded code. It also arrives through defaults. In MySQL 8.0, the `block_encryption_mode` setting defaults to `aes-128-ecb` ([MySQL Secure Deployment Guide](https://dev.mysql.com/doc/mysql-secure-deployment-guide/8.0/en/secure-deployment-block-encryption-mode.html)). In Java, a transformation such as `Cipher.getInstance("AES")` leaves the mode and padding to the provider. Oracle's JDK documentation says that SunJCE and SunPKCS11 fall back to ECB and PKCS5Padding for many symmetric ciphers when a transformation omits them, and it recommends spelling out the full transformation ([JDK Providers Documentation](https://docs.oracle.com/pls/topic/lookup?ctx=javase12&id=security_guide_jdk_providers)). OWASP's Java guidance warns about the same thing for AES: specify the mode explicitly, because most JCE providers default to ECB ([OWASP](https://owasp.org/www-community/Using_the_Java_Cryptographic_Extensions)). Defaults like these put ECB into code that never chose it.
+
+The failure is in the mode, not the cipher: AES-128 in ECB mode is still AES. ECB adds no variation from block to block (no IV, nonce, or chaining), so equal inputs map to equal outputs. A longer key does not change that.
 
 ## What to use instead
 
-For new designs, use an AEAD such as AES-GCM or ChaCha20-Poly1305. Both provide confidentiality and integrity, and both require a unique nonce per message under a given key.
+For new designs, use an AEAD such as AES-GCM ([NIST SP 800-38D](https://csrc.nist.gov/pubs/sp/800/38/d/final)) or ChaCha20-Poly1305 ([RFC 8439](https://www.rfc-editor.org/rfc/rfc8439)). Both provide confidentiality and integrity, and both require a unique nonce for every message under a given key. Reusing a nonce under the same key breaks them.
 
-If the design needs deterministic ciphertexts, use a dedicated deterministic AEAD such as AES-SIV (RFC 5297) and document the equality leak. Do not invent a mode or add a fixed IV to CBC and call it deterministic.
+If the design really needs deterministic ciphertexts, for example to look up encrypted values by equality, use a dedicated deterministic AEAD such as AES-SIV ([RFC 5297](https://www.rfc-editor.org/rfc/rfc5297)) and document the equality leak that remains. Do not invent a mode, and do not add a fixed IV to CBC and call it deterministic.
 
-For existing code, search for ECB identifiers and replace the construction. Rotating the key does not fix a mode that leaks block equality.
+For existing code, find the ECB usage and replace the construction. Rotating the key does not fix a mode that leaks block equality.
 
-Checks that catch the mistake:
+## Checks that catch the mistake
 
-- Encrypt the same plaintext twice. Identical ciphertexts mean deterministic encryption. That may be intentional, but it needs a documented reason.
-- Encrypt a long run of repeated bytes. Repeated ciphertext blocks identify ECB directly.
-- Search for `MODE_ECB`, `modes.ECB`, `aes-128-ecb`, `aes-256-ecb`, and ECB options in database or storage configuration.
-- Add a test that two encryptions of the same plaintext differ, where the design expects randomized encryption. This catches accidental ECB in application code, not in legacy storage that intentionally uses deterministic encryption.
+- **Encrypt the same plaintext twice.** Identical ciphertexts mean the encryption is deterministic. That can be intentional, but it needs a documented reason. Where the design expects randomized encryption, make this a test that fails when the two ciphertexts match.
+- **Encrypt a run of at least 47 identical bytes.** Any run of 47 or more contains two identical, aligned blocks wherever the application's own prefix ends, so two equal ciphertext blocks identify ECB directly.
+- **Search code and configuration** for `MODE_ECB`, `modes.ECB`, `aes-128-ecb`, `aes-256-ecb`, `AES/ECB`, and ECB options in database or storage settings. Also look for APIs that default to ECB, such as `Cipher.getInstance("AES")` in Java and MySQL's `AES_ENCRYPT()` with the default `block_encryption_mode`.
 
 ## Limitations
 
-This demo is local and uses a known key. It does not model a remote exploit chain. This oracle has no rate limit, no random prefix, and no authentication, so the query count would change against a real service.
+This demo is local and uses a known key. It does not model a remote exploit chain. The oracle has no rate limit, no prefix, and no authentication, so the query count would differ against a real service. I have not tested the solver against a network service or a production application, and I have not built the variable-length-prefix variant. These claims are limited to the local run, to the properties of ECB defined in the cited standards, and to the vendor documentation linked in this post.
 
-I have not tested the solver against a network service or a production application. These claims are limited to the local run and to the properties of ECB defined in the cited standards.
+## The complete script
+
+Save it as `ecb_demo.py` and run `python3 ecb_demo.py`. The output is the two listings shown above: the three equality-demo blocks, then the attack results.
+
+```python
+"""Byte-at-a-time recovery of a secret from a local AES-128-ECB oracle.
+
+Requires Python 3.9+ and the `cryptography` package.
+"""
+import string
+
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+KEY = bytes(range(16))
+SECRET = b"demo{ecb_mode_leaks_structure}"
+ALPHABET = (string.ascii_letters + string.digits + string.punctuation + " ").encode()
+queries = 0
+
+
+def ecb_encrypt(plaintext: bytes) -> bytes:
+    encryptor = Cipher(algorithms.AES(KEY), modes.ECB()).encryptor()
+    return encryptor.update(plaintext) + encryptor.finalize()
+
+
+def oracle(prefix: bytes) -> bytes:
+    global queries
+    queries += 1
+    padder = padding.PKCS7(128).padder()
+    return ecb_encrypt(padder.update(prefix + SECRET) + padder.finalize())
+
+
+def blocks(data: bytes, size: int) -> list[bytes]:
+    return [data[i:i + size] for i in range(0, len(data), size)]
+
+
+def show_equality() -> None:
+    plaintext = b"A" * 32 + b"B" * 16
+    ciphertext = ecb_encrypt(plaintext)
+    for i, (p, c) in enumerate(zip(blocks(plaintext, 16), blocks(ciphertext, 16))):
+        print(f"block {i}  {p.decode()}  ->  {c.hex()}")
+
+
+def measure_parameters() -> tuple[int, int]:
+    previous = len(oracle(b""))
+    for n in range(1, 65):
+        current = len(oracle(b"A" * n))
+        if current > previous:
+            block_size = current - previous
+            secret_len = current - block_size - n
+            return block_size, secret_len
+        previous = current
+    raise RuntimeError("no length change observed")
+
+
+def recover_secret(block_size: int, secret_len: int) -> bytes:
+    recovered = b""
+    for i in range(secret_len):
+        n = (block_size - 1 - i) % block_size
+        index = (n + i) // block_size
+        target = blocks(oracle(b"A" * n), block_size)[index]
+        for candidate in ALPHABET:
+            probe = oracle(b"A" * n + recovered + bytes([candidate]))
+            if blocks(probe, block_size)[index] == target:
+                recovered += bytes([candidate])
+                break
+        else:
+            raise RuntimeError(f"no candidate matched at offset {i}")
+    return recovered
+
+
+def main() -> None:
+    show_equality()
+    print()
+    block_size, secret_len = measure_parameters()
+    print(f"block size: {block_size}")
+    print(f"secret length: {secret_len} bytes")
+    recovered = recover_secret(block_size, secret_len)
+    print(f"recovered: {recovered!r}")
+    print(f"queries: {queries}")
+
+
+if __name__ == "__main__":
+    main()
+```
 
 ## References
 
 - [FIPS 197: Advanced Encryption Standard](https://csrc.nist.gov/pubs/fips/197/final), NIST.
 - [NIST SP 800-38A: Recommendation for Block Cipher Modes of Operation](https://csrc.nist.gov/pubs/sp/800/38/a/final), NIST.
 - [NIST SP 800-38D: Galois/Counter Mode (GCM) and GMAC](https://csrc.nist.gov/pubs/sp/800/38/d/final), NIST.
+- [RFC 8439: ChaCha20 and Poly1305 for IETF Protocols](https://www.rfc-editor.org/rfc/rfc8439), IETF.
 - [RFC 5297: Synthetic Initialization Vector (SIV) Authenticated Encryption](https://www.rfc-editor.org/rfc/rfc5297), IETF.
+- [Cryptopals Set 2, Challenge 12: Byte-at-a-time ECB decryption (Simple)](https://cryptopals.com/sets/2/challenges/12).
 - [Symmetric encryption](https://cryptography.io/en/latest/hazmat/primitives/symmetric-encryption/), Python Cryptographic Authority.
 - [Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html), OWASP.
+- [MySQL Secure Deployment Guide: Block Encryption Mode Configuration](https://dev.mysql.com/doc/mysql-secure-deployment-guide/8.0/en/secure-deployment-block-encryption-mode.html), Oracle (MySQL 8.0).
+- [JDK Providers Documentation](https://docs.oracle.com/pls/topic/lookup?ctx=javase12&id=security_guide_jdk_providers), Oracle (Java SE 12).
+- [Using the Java Cryptographic Extensions](https://owasp.org/www-community/Using_the_Java_Cryptographic_Extensions), OWASP.
