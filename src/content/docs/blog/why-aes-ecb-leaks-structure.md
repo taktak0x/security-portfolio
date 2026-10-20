@@ -184,7 +184,7 @@ For existing code, find the ECB usage and replace the construction. Rotating the
 ## Checks that catch the mistake
 
 - **Encrypt the same plaintext twice.** Identical ciphertexts mean the encryption is deterministic. That can be intentional, but it needs a documented reason. Where the design expects randomized encryption, make this a test that fails when the two ciphertexts match.
-- **Encrypt a run of at least 48 identical bytes.** Any run of 47 or more contains two identical, aligned blocks wherever the application's own prefix ends, so two equal ciphertext blocks identify ECB directly.
+- **Encrypt a run of at least 47 identical bytes.** Any run of 47 or more contains two identical, aligned blocks wherever the application's own prefix ends, so two equal ciphertext blocks identify ECB directly.
 - **Search code and configuration** for `MODE_ECB`, `modes.ECB`, `aes-128-ecb`, `aes-256-ecb`, `AES/ECB`, and ECB options in database or storage settings. Also look for APIs that default to ECB, such as `Cipher.getInstance("AES")` in Java and MySQL's `AES_ENCRYPT()` with the default `block_encryption_mode`.
 
 ## Limitations
