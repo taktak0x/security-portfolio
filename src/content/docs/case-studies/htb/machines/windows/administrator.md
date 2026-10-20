@@ -3,7 +3,8 @@ title: "Administrator — ACL Abuse, Kerberoasting, and DCSync to Domain Comprom
 description: "Misconfigured object permissions drive a multi-hop chain through Kerberoasting, credential capture, and DCSync to domain compromise."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

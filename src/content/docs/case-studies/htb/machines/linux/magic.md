@@ -3,7 +3,8 @@ title: "Magic — SQL Injection and Magic-Byte Upload Bypass to SUID PATH Hijack
 description: "SQL injection in a login page and PNG magic-byte upload evasion provide a foothold; MySQL credentials tunneled through Chisel and reused admin credentials enable lateral movement, and a SUID sysinfo binary is hijacked through PATH to reach root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

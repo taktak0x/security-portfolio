@@ -3,7 +3,8 @@ title: "Ransom — PHP Type Juggling and ZipCrypto Known-Plaintext"
 description: "A PHP loose-comparison flaw bypasses authentication; a ZIP archive's ZipCrypto encryption is broken via known-plaintext to recover an SSH key, and a hardcoded credential in Laravel source provides root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

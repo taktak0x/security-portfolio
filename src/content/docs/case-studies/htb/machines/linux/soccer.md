@@ -3,7 +3,8 @@ title: "Soccer — Tiny File Manager Upload and dstat Plugin Privilege Escalatio
 description: "Default credentials on exposed file-management software and an executable upload provide a web-service shell; WebSocket SQL injection recovers an SSH credential, and a doas rule for dstat is abused through plugin loading to reach root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

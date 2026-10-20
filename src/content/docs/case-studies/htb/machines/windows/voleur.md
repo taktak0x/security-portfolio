@@ -3,7 +3,8 @@ title: "Voleur — Credential Chain to Offline Directory-Backup Abuse"
 description: "Share-hosted documents, Kerberoasting, AD Recycle Bin recovery, and a WSL pivot lead into offline directory-backup analysis."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

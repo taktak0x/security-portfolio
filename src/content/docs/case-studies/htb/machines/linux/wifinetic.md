@@ -3,7 +3,8 @@ title: "Wifinetic — Backup-Exposed Wi-Fi Key Reuse and a Default-PIN WPS Attac
 description: "Anonymous FTP exposes an OpenWrt backup containing a wireless key reused for SSH access; a raw-packet-capable reaver and a default WPS PIN recover a WPA key that grants root SSH."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

@@ -3,7 +3,8 @@ title: "MonitorsFour — Cacti API Token Bypass to Privileged Docker Escape"
 description: "An API access-control flaw exposes password hashes, and an unauthenticated Docker daemon allows a privileged container escape to host root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

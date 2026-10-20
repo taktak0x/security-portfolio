@@ -3,7 +3,8 @@ title: "Support — Embedded Credentials and RBCD Domain Compromise"
 description: "Guest-accessible tooling, reversible credential obfuscation, and excessive computer-object permissions form a path to privileged access."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

@@ -3,7 +3,8 @@ title: "Return — LDAP Credential Capture via Printer Admin Panel"
 description: "A printer admin panel's LDAP configuration is redirected to capture service credentials, then Server Operators escalation reaches Administrator."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

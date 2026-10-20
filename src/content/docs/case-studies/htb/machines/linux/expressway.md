@@ -3,7 +3,8 @@ title: "Expressway — IKE Aggressive Mode to Sudo Hostname Bypass"
 description: "IKE Aggressive Mode with PSK authentication exposes a crackable hash for SSH access, and a non-standard sudo binary is abused through a hostname-based policy bypass (CVE-2025-32462) to reach root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

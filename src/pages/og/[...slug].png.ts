@@ -26,7 +26,7 @@ const category = (entry: CollectionEntry<'docs'>) => {
 		.filter((tag) => /^[a-z0-9][a-z0-9-]{0,23}$/i.test(tag))
 		.slice(0, 3)
 		.join(' · ');
-	return [entry.data.platform, entry.data.content_type, tags].filter(Boolean).join(' · ');
+	return [entry.data.platform, entry.data.exercise_type, tags].filter(Boolean).join(' · ');
 };
 
 export async function getStaticPaths() {

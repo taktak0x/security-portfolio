@@ -3,7 +3,8 @@ title: "Cicada — Credential Chaining to Backup Operators Hive Extraction"
 description: "Guest SMB, LDAP attributes, and embedded script credentials chain into Backup Operators hive extraction and domain compromise."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:
@@ -230,8 +231,8 @@ The script embeds a credential pair.
 
 ```powershell
 $username = "<REMOTE_ACCESS_USER>"
-$password = ConvertTo-SecureString "<REMOTE_ACCESS_PASSWORD>" -AsPlainText -Force
-$credentials = New-Object System.Management.Automation.PSCredential($username, $password)
+$secString = ConvertTo-SecureString "<REMOTE_ACCESS_PASSWORD>" -AsPlainText -Force
+$credentials = New-Object System.Management.Automation.PSCredential($username, $secString)
 ```
 
 Validating the embedded credential through SMB shows broader access, including write access to `C$`.

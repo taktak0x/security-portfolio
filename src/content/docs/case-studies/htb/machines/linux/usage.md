@@ -4,7 +4,8 @@ seoTitle: "Usage — SQL Injection to Root via Laravel-admin Upload and 7-Zip Ab
 description: "SQL injection in a password-reset workflow and a Laravel-admin upload-validation bypass provide a foothold; reused Monit credentials enable SSH, and wildcard and @listfile handling in a sudo 7-Zip backup reach a protected root key."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:
@@ -216,9 +217,8 @@ The privileged backup prints the referenced file:
 Choose an option:
 1. Project Backup
 ...
------BEGIN OPENSSH PRIVATE KEY-----
-<REDACTED_KEY_MATERIAL>
------END OPENSSH PRIVATE KEY-----
+<OPENSSH_PRIVATE_KEY_PEM>
+[key material omitted]
 ```
 
 Action: save the disclosed key with restricted permissions and authenticate as root.

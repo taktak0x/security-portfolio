@@ -3,7 +3,8 @@ title: "Snapped — Pre-Authentication Backup Disclosure and Encryption-Key Leak
 description: "Virtual host enumeration exposes an administrative interface and a pre-authentication backup disclosure that leaks AES key material; decrypting the application database recovers an SSH credential, and local enumeration identifies a privilege-escalation path."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

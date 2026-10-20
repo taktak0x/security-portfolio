@@ -3,7 +3,8 @@ title: "Reaper — NTLM Relay Correlated from Packet Capture and Security Logs"
 description: "Correlating a packet capture with Windows Security event logs to investigate a suspected NTLM relay and authenticated SMB share activity."
 type: case-study
 platform: Hack The Box
-content_type: sherlock
+exercise_type: sherlock
+category: dfir
 status: published-ready
 addedAt: "2026-09-14"
 tags:

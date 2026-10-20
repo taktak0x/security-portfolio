@@ -4,7 +4,8 @@ seoTitle: "Mailing — Path Traversal, NTLM Coercion, and LibreOffice Escalation
 description: "A mail server path traversal exposes a configuration hash, and a crafted document triggers privileged code execution on a client host."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

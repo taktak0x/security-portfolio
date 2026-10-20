@@ -3,7 +3,8 @@ title: "Fries — From a Gitea Credential Leak to ESC7 Domain Compromise"
 description: "A provided Gitea login exposes database credentials that yield pgAdmin 4 remote code execution, Docker daemon control, captured domain credentials, and ESC7 certificate abuse on a dual-OS Active Directory lab."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

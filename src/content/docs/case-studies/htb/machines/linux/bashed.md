@@ -3,7 +3,8 @@ title: "Bashed — Exposed Web Shell and Root-Scheduled Script Abuse"
 description: "Web enumeration exposes an interactive phpbash shell for www-data command execution, then a passwordless sudo transition and a writable root-scheduled script yield root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

@@ -3,7 +3,8 @@ title: "Help — GraphQL Credential Leak to HelpDeskZ Upload RCE"
 description: "A GraphQL endpoint leaks HelpDeskZ credentials and an attachment-upload weakness stores rejected PHP files under predictable names for web-service code execution; a kernel eBPF flaw (CVE-2017-16995) escalates to root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

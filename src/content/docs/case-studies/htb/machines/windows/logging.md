@@ -3,7 +3,8 @@ title: "Logging — Log Leak, Shadow Credentials, and Rogue WSUS to SYSTEM"
 description: "A log-file credential leak, Shadow Credentials abuse, and a rogue update server chain to SYSTEM code execution."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

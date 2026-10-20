@@ -3,7 +3,8 @@ title: "Craft — eval() Injection, Credential Reuse, and Vault SSH OTP"
 description: "Leaked Gogs source exposes hardcoded API credentials and a Flask eval() call for container root; database credential reuse, a Gogs SSH key, and HashiCorp Vault SSH OTP then provide host root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

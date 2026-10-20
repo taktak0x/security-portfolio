@@ -3,7 +3,8 @@ title: "Jerry — Tomcat Manager Default Credentials to SYSTEM Shell"
 description: "Default Tomcat Manager credentials allow WAR deployment, producing an immediate SYSTEM shell."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

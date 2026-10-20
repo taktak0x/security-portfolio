@@ -3,7 +3,8 @@ title: "Broker — ActiveMQ OpenWire RCE and Unsafe Daemon Sudo"
 description: "An Apache ActiveMQ deployment with a vulnerable OpenWire service and default console credentials yields a service-account shell; unrestricted nginx sudo enables a root file-write path."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

@@ -3,7 +3,8 @@ title: "Overwatch — ADIDNS Poisoning and WCF SOAP Command Injection"
 description: "A monitoring binary leaks MSSQL credentials; ADIDNS poisoning captures more, and WCF command injection returns a SYSTEM shell."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

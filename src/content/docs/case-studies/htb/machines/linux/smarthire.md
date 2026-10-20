@@ -3,7 +3,7 @@ title: "SmartHire: MLflow Deserialization and a Trusted Python Plugin Path to Ro
 description: "A Medium Linux Hack The Box machine where weak MLflow credentials and a PyFunc deserialization flaw give a service shell, and a root-run Python plugin loader with a group-writable directory escalates to root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
 category: pentest
 status: published-ready
 addedAt: "2026-10-05"

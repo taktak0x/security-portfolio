@@ -3,7 +3,8 @@ title: "EscapeTwo — AD CS ESC4 Template Abuse via WriteOwner and Shadow Creden
 description: "A share readable by a low-privileged domain account exposes a live MSSQL sa credential, enabling command execution and configuration-file password reuse before AD CS ESC4 template abuse issues a certificate for the administrative identity."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-15"
 tags:

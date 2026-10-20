@@ -41,9 +41,9 @@ export const collections = {
 				type: z.string().optional(),
 				platform: z.string().optional(),
 				status: z.string().optional(),
-				content_type: z.string().optional(),
+				exercise_type: z.enum(['machine', 'sherlock']).optional(),
 				blog_type: z.enum(['analysis', 'note', 'briefing']).optional(),
-				category: z.string().optional(),
+				category: z.enum(['pentest', 'dfir', 'soc']).optional(),
 				published: isoDate('published'),
 				updated: isoDate('updated'),
 				telemetry: z.array(z.string()).optional(),
@@ -108,11 +108,11 @@ export const collections = {
 				if (data.research_status !== undefined && data.type !== 'lab') {
 					ctx.addIssue({ code: 'custom', path: ['research_status'], message: 'Only valid for lab entries' });
 				}
-				if (data.type === undefined && data.content_type === undefined) return;
+				if (data.type === undefined && data.exercise_type === undefined) return;
 
 				if (data.type === 'blog' || data.type === 'lab') {
-					if (data.content_type !== undefined) {
-						ctx.addIssue({ code: 'custom', path: ['content_type'], message: 'Not valid for blog or lab entries' });
+					if (data.exercise_type !== undefined) {
+						ctx.addIssue({ code: 'custom', path: ['exercise_type'], message: 'Not valid for blog or lab entries' });
 					}
 					const section = data.type === 'blog' ? 'blog' : 'lab';
 					if (docsPath !== section && !docsPath.startsWith(`${section}/`)) {
@@ -124,11 +124,14 @@ export const collections = {
 				if (data.type !== 'case-study') {
 					ctx.addIssue({ code: 'custom', path: ['type'], message: 'Must be case-study' });
 				}
-				if (!data.platform?.trim()) {
-					ctx.addIssue({ code: 'custom', path: ['platform'], message: 'Required' });
+				if (data.platform !== 'Hack The Box') {
+					ctx.addIssue({ code: 'custom', path: ['platform'], message: 'Must be Hack The Box' });
 				}
-				if (data.content_type !== 'machine' && data.content_type !== 'sherlock') {
-					ctx.addIssue({ code: 'custom', path: ['content_type'], message: 'Invalid case-study content type' });
+				if (data.exercise_type !== 'machine' && data.exercise_type !== 'sherlock') {
+					ctx.addIssue({ code: 'custom', path: ['exercise_type'], message: 'Must be machine or sherlock' });
+				}
+				if (data.category === undefined) {
+					ctx.addIssue({ code: 'custom', path: ['category'], message: 'Required' });
 				}
 				if (data.status !== 'published-ready') {
 					ctx.addIssue({ code: 'custom', path: ['status'], message: 'Must be published-ready' });
@@ -144,11 +147,18 @@ export const collections = {
 				const linuxDir = filePath.includes('/machines/linux/');
 				const machinePath = /\/case-studies\/htb\/machines\/(windows|linux)\//.test(filePath);
 				const sherlockPath = /\/case-studies\/htb\/sherlocks\/(dfir|soc)\//.test(filePath);
-				if (data.content_type === 'machine' && !machinePath) {
-					ctx.addIssue({ code: 'custom', path: ['content_type'], message: 'Machine entries must live under case-studies/htb/machines/{windows|linux}/' });
+				if (data.exercise_type === 'machine' && !machinePath) {
+					ctx.addIssue({ code: 'custom', path: ['exercise_type'], message: 'Machine entries must live under case-studies/htb/machines/{windows|linux}/' });
 				}
-				if (data.content_type === 'sherlock' && !sherlockPath) {
-					ctx.addIssue({ code: 'custom', path: ['content_type'], message: 'Sherlock entries must live under case-studies/htb/sherlocks/{dfir|soc}/' });
+				if (data.exercise_type === 'sherlock' && !sherlockPath) {
+					ctx.addIssue({ code: 'custom', path: ['exercise_type'], message: 'Sherlock entries must live under case-studies/htb/sherlocks/{dfir|soc}/' });
+				}
+				if (machinePath && data.category !== 'pentest') {
+					ctx.addIssue({ code: 'custom', path: ['category'], message: 'Machine entries must use category pentest' });
+				}
+				const sherlockCategory = filePath.match(/\/case-studies\/htb\/sherlocks\/(dfir|soc)\//)?.[1];
+				if (sherlockCategory && data.category !== sherlockCategory) {
+					ctx.addIssue({ code: 'custom', path: ['category'], message: `Sherlock entries under ${sherlockCategory}/ must use category ${sherlockCategory}` });
 				}
 				const relativePath = filePath.includes('/src/') ? filePath.slice(filePath.indexOf('/src/') + 1) : filePath || 'unknown file';
 				if (windowsDir && data.tags?.includes('linux')) {

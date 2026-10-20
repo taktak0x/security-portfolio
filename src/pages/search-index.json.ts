@@ -10,7 +10,7 @@ export async function GET() {
 	const docs = await getCollection('docs');
 	const items = docs.map((entry) => {
 		const resolvedCategory = resolveCategory(entry.id);
-		const category = resolvedCategory?.key ?? '';
+		const routeCategory = resolvedCategory?.key ?? '';
 
 		// The loader strips a trailing `/index` from `entry.id`, so index entries
 		// are detected by filename, the same way `[...slug].astro` does.
@@ -28,7 +28,7 @@ export async function GET() {
 			if (isIndex) {
 				kind = 'collection';
 				label = 'Collection';
-			} else if (entry.data.content_type === 'sherlock') {
+			} else if (entry.data.exercise_type === 'sherlock') {
 				kind = 'case-study';
 				label = `${resolvedCategory?.label} investigation`;
 			} else {
@@ -69,7 +69,8 @@ export async function GET() {
 			tools: entry.data.tools ?? [],
 			skill: entry.data.skill,
 			outcome: entry.data.outcome,
-			category,
+			routeCategory,
+			semanticCategory: entry.data.category,
 			kind,
 			label,
 		};

@@ -3,7 +3,8 @@ title: "WifineticTwo — OpenPLC RCE and WPS PixieDust Pivot"
 description: "Default OpenPLC credentials and a Structured Text C extension provide container root; wireless scanning and a WPS PixieDust attack recover a WPA passphrase, and association leads to passwordless root SSH on a router."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

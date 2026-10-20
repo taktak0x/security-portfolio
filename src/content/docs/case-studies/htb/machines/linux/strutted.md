@@ -3,7 +3,8 @@ title: "Strutted — Apache Struts Upload Path Traversal and tcpdump Sudo Hook"
 description: "An exposed application archive identifies legacy Apache Struts upload handling, and CVE-2024-53677 path traversal yields a service-account shell; a stored credential enables SSH, and a sudo tcpdump post-rotate hook reaches root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

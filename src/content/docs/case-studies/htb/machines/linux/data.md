@@ -3,7 +3,8 @@ title: "Data — Grafana Path Traversal to Docker Container Escape"
 description: "Grafana path traversal (CVE-2021-43798) extracts the application database for offline credential cracking, and a permissive docker exec sudo rule mounts the host filesystem to reach root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

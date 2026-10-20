@@ -3,7 +3,7 @@ title: "Reactor: Next.js React2Shell RCE and a Root Node.js Inspector"
 description: "An Easy Linux Hack The Box machine where a vulnerable Next.js App Router build allows unauthenticated RCE through React2Shell, a cracked MD5 hash grants SSH, and a root-owned Node.js inspector yields a root shell."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
 category: pentest
 status: published-ready
 addedAt: "2026-10-05"

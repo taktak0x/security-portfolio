@@ -4,7 +4,8 @@ seoTitle: "Networked — Web Shell Upload, Command Injection, and sudo Abuse"
 description: "A leaked backup exposes upload source with weak MIME and extension checks, enabling a double-extension PHP web shell; command injection through filenames in a cron script and input validation gaps in a sudo network script lead to privileged access."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

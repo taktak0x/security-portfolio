@@ -3,7 +3,8 @@ title: "Resolute — LDAP Credential Exposure and DNSAdmins DLL Injection to SYS
 description: "An LDAP description attribute and PowerShell transcripts expose administrative credentials, then DNSAdmins abuse loads a malicious DLL for SYSTEM."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

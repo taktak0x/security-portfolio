@@ -3,7 +3,8 @@ title: "Authority — AD CS ESC1 via Ansible Vault Credential Exposure"
 description: "An exposed Ansible vault and rogue LDAP listener expose service credentials, enabling ESC1 certificate abuse for Domain Administrator."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

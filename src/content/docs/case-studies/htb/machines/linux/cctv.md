@@ -4,7 +4,8 @@ seoTitle: "CCTV — ZoneMinder Blind SQL Injection to motionEye Command Injectio
 description: "A blind SQL injection in ZoneMinder recovers credential hashes for SSH access, then filename command injection in a root-run motionEye service leads to root."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

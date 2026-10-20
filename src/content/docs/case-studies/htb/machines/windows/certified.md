@@ -3,7 +3,8 @@ title: "Certified — Active Directory ACL Delegation and AD CS ESC9 Escalation"
 description: "Group and account-control permissions form an ACL chain ending in AD CS ESC9 certificate abuse."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

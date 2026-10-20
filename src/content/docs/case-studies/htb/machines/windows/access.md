@@ -3,7 +3,8 @@ title: "Access — Credential Sprawl Across Legacy Services"
 description: "Anonymous FTP and archive recovery expose credentials that grant Telnet access, then escalate through cached credential abuse."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:

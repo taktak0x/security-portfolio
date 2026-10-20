@@ -3,7 +3,8 @@ title: "Retro — AD CS ESC1 Impersonation via Guest SMB Disclosure and a Pre-cr
 description: "Guest SMB notes and a pre-created computer account lead to an ESC1 certificate template and administrator impersonation."
 type: case-study
 platform: Hack The Box
-content_type: machine
+exercise_type: machine
+category: pentest
 status: published-ready
 addedAt: "2026-09-14"
 tags:
