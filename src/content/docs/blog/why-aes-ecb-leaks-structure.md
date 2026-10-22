@@ -1,6 +1,6 @@
 ---
 title: "Why ECB Mode Leaks Structure: A Byte-at-a-Time Oracle"
-description: "How a local AES-128-ECB oracle gives up a 30-byte secret one byte at a time, why ECB leaks block equality, and what to use instead."
+description: "How a local AES-128-ECB oracle gives up a 30-byte secret one byte at a time, why ECB leaks block equality and allows block splicing, and what to use instead."
 type: blog
 blog_type: analysis
 tags:
@@ -12,7 +12,7 @@ tags:
 
 AES-ECB encrypts each 16-byte block on its own, so equal plaintext blocks become equal ciphertext blocks under the same key. An attacker who can submit chosen input and read the ciphertext can use that equality to recover a secret without attacking AES itself.
 
-This post rebuilds the classic byte-at-a-time attack ([Cryptopals Set 2, Challenge 12](https://cryptopals.com/sets/2/challenges/12)) against a local AES-128-ECB oracle. The solver recovers a 30-byte secret in 761 queries. It never sees the key: it compares ciphertext blocks and keeps the candidate that produces a match.
+This post rebuilds the classic byte-at-a-time attack ([Cryptopals Set 2, Challenge 12](https://cryptopals.com/sets/2/challenges/12)) against a local AES-128-ECB oracle. The solver recovers a 30-byte secret in 761 queries. It never sees the key: it compares ciphertext blocks and keeps the candidate that produces a match. A second demo uses the same mode to splice a captured ciphertext block into a toy profile and turn `role=user` into `role=admin`.
 
 ## The property that breaks it
 
@@ -77,7 +77,8 @@ The ciphertext grows in block-sized steps. Send one more filler byte at a time u
 ```python
 def measure_parameters() -> tuple[int, int]:
     previous = len(oracle(b""))
-    for n in range(1, 65):
+    # At most one block of filler is needed to cross the first boundary.
+    for n in range(1, 17):
         current = len(oracle(b"A" * n))
         if current > previous:
             block_size = current - previous
@@ -99,6 +100,8 @@ If the secret were block-aligned, the first jump would come later, at `n = 16`, 
 block size: 16
 secret length: 30 bytes
 ```
+
+The jump is always exactly one block. Adding one filler byte adds one plaintext byte, and PKCS#7's padded length can cross at most one block boundary per single-byte increment, so `current - previous` is either zero or `block_size`, never a larger multiple.
 
 ## Recover one byte at a time
 
@@ -149,6 +152,8 @@ The 761 queries break down as 3 to measure the parameters, 30 target queries (on
 
 The cost depends on the candidate list and, just as much, on its order. I used the 95 printable ASCII characters in the order Python's `string` module lists them: lowercase letters, uppercase letters, digits, punctuation, then space. A lowercase `a` costs one probe, while the closing `}` is the 93rd candidate. If every byte were the last candidate, the run would take 2,883 queries; if every byte were the first, 63. Both figures include the 3 measuring queries.
 
+A real attacker can order the list by expected frequency, for example space and lowercase letters first. The query count depends on the position of the correct byte, so a better order can reduce the run at no extra cost.
+
 A binary secret needs all 256 byte values. I ran the same solver with `bytes(range(256))` as the candidate list, and it took 3,273 queries for this secret. That figure depends on the secret and on the candidate order, but the loop itself does not change.
 
 ## What the attack needs
@@ -163,9 +168,74 @@ What comes out is the plaintext exactly as the oracle encrypts it. If an applica
 
 The attack does not recover the AES key, and it does not work against a correctly used AEAD, which produces different ciphertext for the same input because every message gets a fresh nonce. It recovers plaintext from a mode that leaks block equality.
 
-## What else ECB's design allows
+## Splicing blocks: a profile forgery
 
-Equality leakage is one consequence of encrypting blocks independently; malleability is another. Because each block stands alone and nothing authenticates the message as a whole, an attacker can reorder, repeat, drop, or splice blocks, including blocks taken from other messages, without triggering any integrity failure. The byte-at-a-time oracle turns the equality leak into full plaintext recovery with a short script.
+Equality leakage is one consequence of encrypting blocks independently; malleability is another. This second attack uses an encryption oracle that accepts a structured input and a parser that trusts the resulting profile. Because each block stands alone and nothing authenticates the message as a whole, an attacker can move a ciphertext block from one message to another. The block decrypts to the same plaintext in its new position. Cryptopals Set 2, Challenge 13 builds a small profile system around that weakness.
+
+The toy encoder strips `&` and `=` so an email cannot inject fields directly:
+
+```python
+def profile_for(email: str) -> bytes:
+    email = email.replace("&", "").replace("=", "")
+    return f"email={email}&uid=10&role=user".encode()
+
+
+def profile_oracle(email: str) -> bytes:
+    return ecb_encrypt(pkcs7_pad(profile_for(email)))
+```
+
+The `pkcs7_pad`, `pkcs7_unpad`, and `ecb_decrypt` helpers are in the complete script below.
+
+The goal is a ciphertext that decrypts to a profile with `role=admin`. The first query's email is 26 bytes: ten `A` bytes, `admin`, and eleven `0x0b` bytes. `email=` is 6 bytes, so the ten `A` bytes fill block 0 exactly. The encoder appends `&uid=10&role=user`, which starts in block 2, so block 1 is exactly `admin` followed by eleven `0x0b` bytes:
+
+| Block | Query 1 plaintext |
+|---|---|
+| 0 | `email=AAAAAAAAAA` |
+| 1 | `admin` plus eleven `0x0b` bytes |
+| 2 | `&uid=10&role=use` |
+| 3 | `r` plus fifteen `0x0f` bytes |
+
+The eleven `0x0b` bytes are email content, not padding added by the oracle. They survive because the encoder removes only `&` and `=`. The attacker captures that block. Because ECB encrypts each block independently, the ciphertext for block 1 is self-contained. When it is moved to the end of another ciphertext, the server's unpadder reads the `0x0b` bytes as valid PKCS#7 padding.
+
+The second query uses a 13-byte email. `email=` plus 13 bytes plus `&uid=10&role=` is 32 bytes, so `role=` ends on a block boundary and `user` sits alone in the final block:
+
+| Block | Query 2 plaintext |
+|---|---|
+| 0 | `email=AAAAAAAAAA` |
+| 1 | `AAA&uid=10&role=` |
+| 2 | `user` plus twelve `0x0c` bytes |
+
+The forgery takes the first two blocks from query 2 and appends block 1 from query 1:
+
+| Block | Forged plaintext |
+|---|---|
+| 0 | `email=AAAAAAAAAA` |
+| 1 | `AAA&uid=10&role=` |
+| 2 | `admin` plus eleven `0x0b` bytes |
+
+```python
+def forge_admin() -> bytes:
+    admin_email = "A" * 10 + "admin" + "\x0b" * 11
+    admin_block = blocks(profile_oracle(admin_email), 16)[1]
+
+    prefix_email = "A" * 13
+    prefix = b"".join(blocks(profile_oracle(prefix_email), 16)[:2])
+
+    return prefix + admin_block
+```
+
+The attack makes two encryption queries and no decryption queries. The only decryption is in `profile_server`, which shows what the server returns:
+
+```python
+def profile_server(ciphertext: bytes) -> str:
+    return pkcs7_unpad(ecb_decrypt(ciphertext)).decode()
+```
+
+```text
+forged profile: 'email=AAAAAAAAAAAAA&uid=10&role=admin'
+```
+
+The last block came from a different message. The server decrypts it to the same plaintext block because ECB has no chaining value, then accepts the `0x0b` bytes as padding. The profile parser sees `role=admin`. The forgery did not need the key; it used only the encryption oracle.
 
 ## Why ECB keeps showing up
 
@@ -184,19 +254,20 @@ For existing code, find the ECB usage and replace the construction. Rotating the
 ## Checks that catch the mistake
 
 - **Encrypt the same plaintext twice.** Identical ciphertexts mean the encryption is deterministic. That can be intentional, but it needs a documented reason. Where the design expects randomized encryption, make this a test that fails when the two ciphertexts match.
-- **Encrypt a run of at least 47 identical bytes.** Any run of 47 or more contains two identical, aligned blocks wherever the application's own prefix ends, so two equal ciphertext blocks identify ECB directly.
+- **Encrypt a run of at least 47 identical bytes.** At most 15 bytes are needed to reach an aligned boundary from any prefix offset, and 32 more bytes provide two full blocks. A run of 47 therefore contains two identical, aligned blocks, so two equal ciphertext blocks identify ECB directly.
 - **Search code and configuration** for `MODE_ECB`, `modes.ECB`, `aes-128-ecb`, `aes-256-ecb`, `AES/ECB`, and ECB options in database or storage settings. Also look for APIs that default to ECB, such as `Cipher.getInstance("AES")` in Java and MySQL's `AES_ENCRYPT()` with the default `block_encryption_mode`.
 
 ## Limitations
 
-This demo is local and uses a known key. It does not model a remote exploit chain. The oracle has no rate limit, no prefix, and no authentication, so the query count would differ against a real service. I have not tested the solver against a network service or a production application, and I have not built the variable-length-prefix variant. These claims are limited to the local run, to the properties of ECB defined in the cited standards, and to the vendor documentation linked in this post.
+This demo is local and uses a known key. It does not model a remote exploit chain. The oracle has no rate limit, no prefix, and no authentication, so the query count would differ against a real service. I have not tested the solver against a network service or a production application, and I have not built the variable-length-prefix variant. The profile forgery is also local: it uses a toy encoder, a fixed key, and two encryption queries, and it does not model a real application's profile parser or authorization logic. These claims are limited to the local run, to the properties of ECB defined in the cited standards, and to the vendor documentation linked in this post.
 
 ## The complete script
 
-Save it as `ecb_demo.py` and run `python3 ecb_demo.py`. The output is the two listings shown above: the three equality-demo blocks, then the attack results.
+Save it as `ecb_demo.py` and run `python3 ecb_demo.py`. The output includes the listings shown above: the three equality-demo blocks, the byte-at-a-time results, and the forged profile.
 
 ```python
-"""Byte-at-a-time recovery of a secret from a local AES-128-ECB oracle.
+"""Byte-at-a-time recovery of a secret from a local AES-128-ECB oracle,
+plus an ECB block-splicing demo.
 
 Requires Python 3.9+ and the `cryptography` package.
 """
@@ -227,6 +298,46 @@ def blocks(data: bytes, size: int) -> list[bytes]:
     return [data[i:i + size] for i in range(0, len(data), size)]
 
 
+def ecb_decrypt(ciphertext: bytes) -> bytes:
+    decryptor = Cipher(algorithms.AES(KEY), modes.ECB()).decryptor()
+    return decryptor.update(ciphertext) + decryptor.finalize()
+
+
+def pkcs7_pad(data: bytes) -> bytes:
+    n = 16 - len(data) % 16
+    return data + bytes([n]) * n
+
+
+def pkcs7_unpad(data: bytes) -> bytes:
+    n = data[-1]
+    if not 1 <= n <= 16 or data[-n:] != bytes([n]) * n:
+        raise ValueError("invalid padding")
+    return data[:-n]
+
+
+def profile_for(email: str) -> bytes:
+    email = email.replace("&", "").replace("=", "")
+    return f"email={email}&uid=10&role=user".encode()
+
+
+def profile_oracle(email: str) -> bytes:
+    return ecb_encrypt(pkcs7_pad(profile_for(email)))
+
+
+def forge_admin() -> bytes:
+    admin_email = "A" * 10 + "admin" + "\x0b" * 11
+    admin_block = blocks(profile_oracle(admin_email), 16)[1]
+
+    prefix_email = "A" * 13
+    prefix = b"".join(blocks(profile_oracle(prefix_email), 16)[:2])
+
+    return prefix + admin_block
+
+
+def profile_server(ciphertext: bytes) -> str:
+    return pkcs7_unpad(ecb_decrypt(ciphertext)).decode()
+
+
 def show_equality() -> None:
     plaintext = b"A" * 32 + b"B" * 16
     ciphertext = ecb_encrypt(plaintext)
@@ -236,7 +347,8 @@ def show_equality() -> None:
 
 def measure_parameters() -> tuple[int, int]:
     previous = len(oracle(b""))
-    for n in range(1, 65):
+    # At most one block of filler is needed to cross the first boundary.
+    for n in range(1, 17):
         current = len(oracle(b"A" * n))
         if current > previous:
             block_size = current - previous
@@ -271,6 +383,7 @@ def main() -> None:
     recovered = recover_secret(block_size, secret_len)
     print(f"recovered: {recovered!r}")
     print(f"queries: {queries}")
+    print(f"forged profile: {profile_server(forge_admin())!r}")
 
 
 if __name__ == "__main__":
@@ -285,6 +398,7 @@ if __name__ == "__main__":
 - [RFC 8439: ChaCha20 and Poly1305 for IETF Protocols](https://www.rfc-editor.org/rfc/rfc8439), IETF.
 - [RFC 5297: Synthetic Initialization Vector (SIV) Authenticated Encryption](https://www.rfc-editor.org/rfc/rfc5297), IETF.
 - [Cryptopals Set 2, Challenge 12: Byte-at-a-time ECB decryption (Simple)](https://cryptopals.com/sets/2/challenges/12).
+- [Cryptopals Set 2, Challenge 13: ECB cut-and-paste](https://cryptopals.com/sets/2/challenges/13).
 - [Symmetric encryption](https://cryptography.io/en/latest/hazmat/primitives/symmetric-encryption/), Python Cryptographic Authority.
 - [Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html), OWASP.
 - [MySQL Secure Deployment Guide: Block Encryption Mode Configuration](https://dev.mysql.com/doc/mysql-secure-deployment-guide/8.0/en/secure-deployment-block-encryption-mode.html), Oracle (MySQL 8.0).
